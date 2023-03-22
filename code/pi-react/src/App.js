@@ -1,10 +1,11 @@
 import logo from './logo.svg';
 import './App.css';
+import MeditrakkerMap from './components/map';
 
 function App() {
   return (
     <div className="App">
-      <header className="App-header">
+      {/* <header className="App-header">
         <img src={logo} className="App-logo" alt="logo" />
         <p>
           Edit <code>src/App.js</code> and save to reload.
@@ -17,7 +18,10 @@ function App() {
         >
           Learn React
         </a>
-      </header>
+      </header> */}
+      {/* <h1>Testos</h1> */}
+      {<MeditrakkerMap center_lat={45.39701} center_lon={6.58968} zoom={13} />}
+      
     </div>
   );
 }
