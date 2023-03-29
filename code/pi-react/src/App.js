@@ -1,6 +1,7 @@
 import logo from './logo.svg';
 import './App.css';
 import MeditrakkerMap from './components/map';
+import FromScratchMap from './components/mapFromScratch';
 
 function App() {
   return (
@@ -20,7 +21,8 @@ function App() {
         </a>
       </header> */}
       {/* <h1>Testos</h1> */}
-      {<MeditrakkerMap center_lat={45.39701} center_lon={6.58968} zoom={13} />}
+      {/*<MeditrakkerMap center_lat={45.39701} center_lon={6.58968} zoom={13} />*/}
+      <FromScratchMap center_lat={45.39701} center_lon={6.58968} zoom={13} />
       
     </div>
   );
