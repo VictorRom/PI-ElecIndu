@@ -1,10 +1,9 @@
-import './App.css';
-import Map3 from './components/map3'
+import FromScratchMap from './components/mapFromScratch'
 
 function App() {
   return (
     <div className="App">
-      <Map3 />
+      <FromScratchMap />
     </div>
   );
 }
