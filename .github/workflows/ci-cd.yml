@@ -1,0 +1,37 @@
+name: Docker Compose CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Log into GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build and push Docker images
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        push: true
+        tags: ghcr.io/${{ github.repository }}/mongo:latest, ghcr.io/${{ github.repository }}/mongo-express:latest, ghcr.io/${{ github.repository }}/transformer:latest
+        dockerfile: ./docker-compose.yml
+
+    - name: Deploy Docker Compose stack
+      run: |
+        docker-compose down
+        docker-compose pull
+        docker-compose up -d
+      working-directory: .
+
