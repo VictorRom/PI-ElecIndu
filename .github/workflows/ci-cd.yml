@@ -11,27 +11,27 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
-
+      uses: actions/checkout@v3
     - name: Log into GitHub Container Registry
       uses: docker/login-action@v1
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Try to build docker image
+      run: docker-compose up -d ./docker/docker-compose.yml
 
-    - name: Build and push Docker images
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        push: true
-        tags: ghcr.io/pi-elecindu/mongo:latest, ghcr.io/pi-elecindu/mongo-express:latest, ghcr.io/pi-elecindu/transformer:latest
-        dockerfile: ./docker/docker-compose.yml
-
-    - name: Deploy Docker Compose stack
-      run: |
-        docker-compose down
-        docker-compose pull
-        docker-compose up -d
-      working-directory: .
-
+#    - name: Build and push Docker images
+#      uses: docker/build-push-action@v2
+#      with:
+#        context: .
+#        push: true
+#        tags: ghcr.io/pi-elecindu/mongo:latest, ghcr.io/pi-elecindu/mongo-express:latest, ghcr.io/pi-elecindu/transformer:latest
+#        dockerfile: ./docker/docker-compose.yml
+#
+#    - name: Deploy Docker Compose stack
+#      run: |
+#        docker-compose down
+#        docker-compose pull
+#        docker-compose up -d
+#      working-directory: .
