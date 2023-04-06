@@ -1,6 +1,10 @@
 # Use root/example as user/password credentials
 version: '3.1'
 
+networks:
+  mongo:
+    driver: bridge
+
 services:
 
   mongo:
@@ -13,6 +17,8 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
+    networks:
+      - mongo
 
   mongo-express:
     image: mongo-express
@@ -23,3 +29,10 @@ services:
       ME_CONFIG_MONGODB_ADMINUSERNAME: root
       ME_CONFIG_MONGODB_ADMINPASSWORD: example
       ME_CONFIG_MONGODB_URL: mongodb://root:example@mongo:27017/
+    networks:
+      - mongo
+
+  transformer:
+    build: ./code/transformer
+    networks:
+      - mongo
