@@ -26,7 +26,7 @@ jobs:
         context: .
         push: true
         tags: ghcr.io/pi-elecindu/mongo:latest, ghcr.io/pi-elecindu/mongo-express:latest, ghcr.io/pi-elecindu/transformer:latest
-        dockerfile: ./docker-compose.yml
+        dockerfile: ./docker/docker-compose.yml
 
     - name: Deploy Docker Compose stack
       run: |
