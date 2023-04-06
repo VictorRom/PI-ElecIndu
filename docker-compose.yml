@@ -33,6 +33,6 @@ services:
       - mongo
 
   transformer:
-    build: ../code/transformer
+    build: ./code/transformer
     networks:
       - mongo
