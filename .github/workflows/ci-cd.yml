@@ -19,7 +19,7 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: Try to build docker image
-      run: docker-compose up -d ./docker/docker-compose.yml
+      run: ls
 
 #    - name: Build and push Docker images
 #      uses: docker/build-push-action@v2
