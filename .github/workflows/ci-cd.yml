@@ -25,7 +25,7 @@ jobs:
       with:
         context: .
         push: true
-        tags: ghcr.io/${{ github.repository }}/mongo:latest, ghcr.io/${{ github.repository }}/mongo-express:latest, ghcr.io/${{ github.repository }}/transformer:latest
+        tags: ghcr.io/pi-elecindu/mongo:latest, ghcr.io/pi-elecindu/mongo-express:latest, ghcr.io/pi-elecindu/transformer:latest
         dockerfile: ./docker-compose.yml
 
     - name: Deploy Docker Compose stack
