@@ -1,0 +1,15 @@
+{
+    "type": "Feature",
+    "geometry": {
+        "type": "Point",
+        "coordinates": [
+            [6.58968, 45.39701]
+        ]
+    },
+    "properties": {
+        "sensor1": ["value1"],
+        "sensor2": ["value2"],
+        "speed": [50],
+        "timestamp": ["2023-04-24T10:30:00Z"]
+    }
+}
