@@ -1,10 +1,14 @@
-from fastapi import FastAPI
 import uvicorn
+import pymongo as pm
+import math
+
 from pydantic import BaseModel
 from pydantic.fields import *
 from datetime import datetime, timedelta
-import pymongo as pm
-import math
+from fastapi import FastAPI, Response, status
+from fastapi.security import HTTPBasicCredentials
+
+from communication_helper import security
 
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -44,16 +48,29 @@ class GPSData(BaseModel):
 
 app = FastAPI()
 
+# TODO find a way do this part more securly (maybe using a external lib) : 
+def validate_credentials(credentials: HTTPBasicCredentials):
+    correct_username = "my_username"
+    correct_password = "my_password"
+    return ( credentials.username == correct_username and credentials.password == correct_password )
+
 ##############
 # GET ROUTES #
 ##############
 @app.get("/")
-async def root():
+async def root(response: Response, credentials: HTTPBasicCredentials = security):
+    if not validate_credentials(credentials):
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return {"detail": "Incorrect username or password"}
     print("Hello World")
     return {"message": "Hello World"}
 
 @app.get("/live")
-async def live_page():
+async def live_page(response: Response, credentials: HTTPBasicCredentials = security):
+    if not validate_credentials(credentials):
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return {"detail": "Incorrect username or password"}
+
     date = datetime.now() - timedelta(days=1) # get the date of the last 24 hours from now
 
     query = {"properties.timestamp": {
@@ -74,7 +91,10 @@ async def live_page():
 
 # on passe les data en json sans passer par le body ?
 @app.get("/trail/dts={dts}&dte={dte}") 
-async def trail_page(dts: datetime, dte: datetime):
+async def trail_page(response: Response, dts: datetime, dte: datetime, credentials: HTTPBasicCredentials = security):
+    if not validate_credentials(credentials):
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return {"detail": "Incorrect username or password"}
     # TODO get the points between dts and dte from the database and return them
     
     # verify that the dates are valid 
@@ -123,7 +143,10 @@ async def sessions_page():
 # POST ROUTES #
 ###############
 @app.post("/gps", response_description="GPS data received")
-async def receive_gps_data(data: bytes):
+async def receive_gps_data(response: Response, data: bytes, credentials: HTTPBasicCredentials = security):
+    if not validate_credentials(credentials):
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return {"detail": "Incorrect username or password"}
     # TODO process the data, convert to GeoJSON, and store in MongoDB
     tls_key = "key.pem"
     # decode the data using the tls key
@@ -131,7 +154,10 @@ async def receive_gps_data(data: bytes):
     return {"message": "Data received"}
 
 @app.get("/insert_date")
-async def insert_date():
+async def insert_date(response: Response, credentials: HTTPBasicCredentials = security):
+    if not validate_credentials(credentials):
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return {"detail": "Incorrect username or password"}
 
     # create a date for the 25.04.2023 at 16:00
     date = datetime(2023, 4, 25, 16, 0, 0)
@@ -150,5 +176,5 @@ async def insert_date():
 
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=8080, reload=True)#, ssl_keyfile="key.pem", ssl_certfile="cert.pem")
+    uvicorn.run("app:app", host="0.0.0.0", port=8080, reload=True, ssl_context=context)
 

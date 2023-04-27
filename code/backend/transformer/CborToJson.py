@@ -1,4 +1,3 @@
-
 # pip install cbor2 : https://pypi.org/project/cbor2/
 import cbor2 as cb2
 
