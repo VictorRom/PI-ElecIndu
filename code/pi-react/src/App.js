@@ -1,9 +1,9 @@
-import FromScratchMap from './components/mapFromScratch'
+import Map from './components/map'
 
 function App() {
   return (
     <div className="App">
-      <FromScratchMap />
+      <Map />
     </div>
   );
 }

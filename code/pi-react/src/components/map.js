@@ -1,102 +1,95 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import axios from 'axios';
 import * as turf from '@turf/turf';
+
 
 mapboxgl.accessToken = 'pk.eyJ1IjoidnJwbHMiLCJhIjoiY2wxd29ocWR1MDduZDNicDgzOGhkMWczaCJ9.y40lsszh2YysSIHUeWaOgA';
 
-const MeditrakkerMap = ({ center_lat, center_lon, zoom }) => {
-
-    const mapContainerRef = useRef(null);
-    const map = useRef(null); 
-    const [pinRouteGeojson, setPinRouteGeojson] = useState(null);
-
-    console.log("ENTER MeditrakkerMap")
-
-    // Meme pas sur que le fetch de la route fonctionne réellement
-    // J'y avait mis dans un useEffect -> mais ça ne fonctionnait pas
-    const fetchPinRouteGeojson = async (map) => {
-        const pinRouteGeojson = await fetch('https://docs.mapbox.com/mapbox-gl-js/assets/route-pin.geojson')
-        .then(response => response.json());
-        
-        map.once('style.load') // is this correct ?
-        
-        setPinRouteGeojson(pinRouteGeojson);
-    };
-
-    fetchPinRouteGeojson(map);
-
+const Map = () => {
+    const mapContainer = useRef(null);
+    const [map, setMap] = useState(null);
+    const [pinRouteGeojson, setGeojson] = useState(null)
 
     useEffect(() => {
-        if (map.current) return; // initialize map only once
-        map.current = new mapboxgl.Map({ // Cette partie crash -> erreur de fetch (NetworkError when attempting to fetch resource.)
-            container: mapContainerRef.current,
-            zoom: zoom,
-            center: [center_lon, center_lat],
-            pitch: 76,
-            bearing: 150,
+        const fetchData = async () => {
+            axios.get(
+                'https://docs.mapbox.com/mapbox-gl-js/assets/route-pin.geojson'
+            ).then((response) => {
+                const data = response.data;
+                setGeojson(data);
+            });
+        };
+        fetchData();
+    }, []);
+
+    useEffect(() => {
+        const newMap = new mapboxgl.Map({
+            container: mapContainer.current,
             style: 'mapbox://styles/mapbox/satellite-streets-v12',
+            center: [6.58968, 45.39701],
+            zoom: 13,
+            pitch: 76, // effet 3d
+            pitchWithRotate: true,
+            bearing: 150,
             hash: false
         });
-        
-        console.log("%cmap created : ", 'color: red');
-
-        map.on('load', () => {
-            console.log("map loading");
-            // Add terrain source, with slight exaggeration
-            map.addSource('mapbox-dem', {
+        newMap.on('style.load', () => {
+            newMap.addSource('mapbox-dem', {
                 'type': 'raster-dem',
                 'url': 'mapbox://mapbox.terrain-rgb',
                 'tileSize': 512,
                 'maxzoom': 14
             });
+            newMap.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
+        });
+        setMap(newMap);
+        return () => newMap.remove();
+    }, []);
 
-            console.log("source added")
-
-            map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
-            
-            console.log("terrain set")
-
-            // Rentre parfois dedans mais des fois pas -> je sais ap pourquoi
-            if (pinRouteGeojson){
-                const pinRoute = pinRouteGeojson.features[0].geometry.coordinates;
-                console.log("PINROUTE -> ", pinRoute);
-                // Create the marker and popup that will display the elevation queries
-                const popup = new mapboxgl.Popup({ closeButton: false});
-                const marker = new mapboxgl.Marker({ 
-                    color: 'red',
-                    scale: 0.8,
-                    draggable: false,
-                    pitchAlignment: 'auto',
-                    rotationAlignment: 'auto' 
-                })
+    useEffect(() => {
+        if (pinRouteGeojson && map) {
+            const pinRoute = pinRouteGeojson.features[0].geometry.coordinates;
+            const popup = new mapboxgl.Popup({ closeButton: false });
+            const marker = new mapboxgl.Marker({
+                color: 'red',
+                scale: 0.8,
+                draggable: false,
+                pitchAlignment: 'auto',
+                rotationAlignment: 'auto'
+            })
                 .setLngLat(pinRoute[0])
-                .setPopup(popup)
-                .addTo(map)
-                .togglePopup();
-                
-                // Add a line feature and layer. This feature will get updated as we progress the animation
-                map.addSource('line', {
-                    type: 'geojson',
-                    lineMetrics: true, // line metrics are required for the line-progress property
-                    data: pinRouteGeojson
-                });
+                .setPopup(popup);
 
-                map.addLayer({
-                    type: 'line',
-                    source: 'line',
-                    id: 'line',
-                    paint: {
-                        'line-color': 'rgba(0,0,0,0)',
-                        'line-width': 5
-                    },
-                    layout: {
-                        'line-cap': 'round',
-                        'line-join': 'round'
-                    }
-                });
+            map.on('load', () => {
+                marker.addTo(map)
+                    .togglePopup();
 
-                map.once('idle');
-                // The total animation duration, in milliseconds
+                if (pinRoute.length > 1 && map.getSource('line') === undefined) {
+                    map.addSource('line', {
+                        type: 'geojson',
+                        // Line metrics is required to use the 'line-progress' property
+                        lineMetrics: true,
+                        data: pinRouteGeojson
+                    });
+                    map.addLayer({
+                        type: 'line',
+                        source: 'line',
+                        id: 'line',
+                        paint: {
+                            'line-color': 'rgba(0,0,0,0)',
+                            'line-width': 5
+                        },
+                        layout: {
+                            'line-cap': 'round',
+                            'line-join': 'round'
+                        }
+                    });
+                }
+            });
+
+            map.once('idle', () => {
                 const animationDuration = 20000;
                 // Use the https://turfjs.org/ library to calculate line distances and
                 // sample the line at a given percentage with the turf.along function.
@@ -104,16 +97,16 @@ const MeditrakkerMap = ({ center_lat, center_lon, zoom }) => {
                 // Get the total line distance
                 const pathDistance = turf.lineDistance(path);
                 let start;
-                function frame(time){
-                    console.log("FRAME -> ", time);
-                    if(!start) start = time;
+                function frame(time) {
+                    if (!start) start = time;
                     const animationPhase = (time - start) / animationDuration;
                     if (animationPhase > 1) {
                         return;
                     }
 
                     // Get the new latitude and longitude by sampling along the path
-                    const alongPath = turf.along(path, pathDistance * animationPhase).geometry.coordinates;
+                    const alongPath = turf.along(path, pathDistance * animationPhase)
+                        .geometry.coordinates;
                     const lngLat = {
                         lng: alongPath[0],
                         lat: alongPath[1]
@@ -143,27 +136,22 @@ const MeditrakkerMap = ({ center_lat, center_lon, zoom }) => {
                     // Rotate the camera at a slightly lower speed to give some parallax effect in the background
                     const rotation = 150 - animationPhase * 40.0;
                     map.setBearing(rotation % 360);
-                
+
                     window.requestAnimationFrame(frame);
-                } // end of frame()
+                }
+
                 window.requestAnimationFrame(frame);
-            
-            } // end of if (pinRouteGeojson)
-            else{
-                console.log("pinRouteGeojson is null")
-            }
-        });
-        // setMap(map);
-    }, [center_lat, center_lon, pinRouteGeojson, zoom, map]);
+            })
 
-    useEffect(() => {
-        if (!map.current) return; // wait for map to initialize
-    });
+            // Nettoyage du marqueur et du pop-up lorsque le composant est démonté
+            return () => {
+                marker.remove();
+                popup.remove();
+            };
+        }
+    }, [map, pinRouteGeojson])
 
-    return (
-        <div id="map">The map is loading...</div>
-        // <div id="map" /*style={{ width: '100%', height: '100%' }}*/ />
-    );
+    return <div ref={mapContainer} style={{ width: '100vw', height: '100vh' }} />;
 };
 
-export default MeditrakkerMap;
+export default Map;
