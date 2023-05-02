@@ -25,7 +25,6 @@ const MeditrakkerMap = ({ center_lat, center_lon, zoom }) => {
 
     fetchPinRouteGeojson(map);
 
-
     useEffect(() => {
         if (map.current) return; // initialize map only once
         map.current = new mapboxgl.Map({ // Cette partie crash -> erreur de fetch (NetworkError when attempting to fetch resource.)
