@@ -2,6 +2,7 @@ import React from "react";
 import { useState, useEffect } from "react";
 import FromScratchMap from "../../components/map/mapFromScratch";
 import { getWeatherData } from "../../services/weatherService";
+import RangeSlider from "../../components/slider";
 
 const Live = () => {
     const [weatherData, setWeatherData] = useState({});
@@ -38,15 +39,22 @@ const Live = () => {
                 <div className="w-1/4 border border-gray-400 p-4 mx-2 my-2">
                     {/* display meteo info here */}
                     <h2 className="text-center text-2xl">Weather Info</h2>
-                    {weatherData ? (
+                    
+                    {weatherData && weatherData.current_weather && (
                         <div>
-                            <p>Temperature: {weatherData['current_weather']['temperature']}°C</p>
-                            <p>Wind Speed: {weatherData['current_weather']['windspeed']}km/h</p>
+                            <p>Temperature: {weatherData.current_weather.temperature}  °C</p>
+                            <p>Wind Speed: {weatherData.current_weather.windspeed}  km/h</p>
                         </div>
-                    ) : (
+                    )}
+                    
+                    {!weatherData && !weatherData.current_weather (
                         <p>Error while fetching weather data, abort</p>
                     )}
                 </div>
+            </div>
+            <div className="flex m-4">
+                {/* display the slider here */}
+                <RangeSlider />
             </div>
         </div>
     );
