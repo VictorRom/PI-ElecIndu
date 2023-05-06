@@ -1,8 +1,8 @@
 import React from "react";
 import { useState, useEffect } from "react";
-import FromScratchMap from "../../components/map/mapFromScratch";
 import { getWeatherData } from "../../services/weatherService";
 import RangeSlider from "../../components/slider";
+import Map from "../../components/map/map";
 
 const Live = () => {
     const [weatherData, setWeatherData] = useState({});
@@ -34,7 +34,7 @@ const Live = () => {
             <div className="flex">
                 <div className="w-3/4 border border-gray-400 p-4 mx-2 my-2">
                     {/* import the map here */}
-                    <FromScratchMap center_lat={45.39701} center_lon={6.58968} zoom={13} />
+                    <Map />
                 </div>
                 <div className="w-1/4 border border-gray-400 p-4 mx-2 my-2">
                     {/* display meteo info here */}

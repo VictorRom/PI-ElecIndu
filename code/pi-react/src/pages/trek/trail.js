@@ -1,8 +1,10 @@
 import React from 'react';
 import { useState } from 'react';
-import FromScratchMap from '../../components/map/mapFromScratch';
+import Map from '../../components/map/map';
 
 const TrailGroupInfo = (props) => {
+
+    // Implement useEffect -> voir dans [] en bas de useEffect qui va reload le tout dès que ça change
 
     const today = new Date();
     const tomorrow = new Date(today);
@@ -89,7 +91,7 @@ const TrailGroupInfo = (props) => {
         </div>
         <div className="w-2/3 h-full">
             <h1 className='text-center text-2xl'>Map</h1>
-            {/* {<FromScratchMap center_lat={45.39701} center_lon={6.58968} zoom={13} />} */}
+            <Map />
         </div>
     
     </div>
