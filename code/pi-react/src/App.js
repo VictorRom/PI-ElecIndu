@@ -1,12 +1,11 @@
-import Map from './components/map/map'
-import Live from './pages/live/live'
-
+import AppRouter from './components/appRouter';
+import Test from './pages/test';
 
 function App() {
   return (
     <div className="App">
-      {/* <Map /> */}
-      <Live />
+      {/* <AppRouter /> */}
+      <Test />
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import React from "react";
 import { useState, useEffect } from "react";
 import { getWeatherData } from "../../services/weatherService";
-import RangeSlider from "../../components/slider";
 import Map from "../../components/map/map";
 
 const Live = () => {
@@ -24,20 +23,16 @@ const Live = () => {
     }, []);
 
     return (
-        <div>
-            <div className="flex">
-                <div className="w-full border border-gray-400 p-4 mx-2 my-2 flex">
-                    <span>Time since last sensor connection : </span>
-                    <span className="text-red-500 ml-2">48min 12s</span>
-                </div>
+        <div className="page">
+            <div className="w-full border border-gray-400 p-4 mx-2 my-2 flex" style={{height: "6vh"}}>
+                <span>Time since last sensor connection : </span>
+                <span className="text-red-500 ml-2">48min 12s</span>
             </div>
-            <div className="flex">
+            <div className="flex" style={{height: "84vh"}}>
                 <div className="w-3/4 border border-gray-400 p-4 mx-2 my-2">
-                    {/* import the map here */}
-                    <Map />
+                        <Map />
                 </div>
                 <div className="w-1/4 border border-gray-400 p-4 mx-2 my-2">
-                    {/* display meteo info here */}
                     <h2 className="text-center text-2xl">Weather Info</h2>
                     
                     {weatherData && weatherData.current_weather && (
@@ -51,10 +46,6 @@ const Live = () => {
                         <p>Error while fetching weather data, abort</p>
                     )}
                 </div>
-            </div>
-            <div className="flex m-4">
-                {/* display the slider here */}
-                <RangeSlider />
             </div>
         </div>
     );

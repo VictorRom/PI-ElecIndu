@@ -1,10 +1,27 @@
 import React from 'react';
 import { useState } from 'react';
 import Map from '../../components/map/map';
+import ChartComponent from '../../components/chart';
 
-const TrailGroupInfo = (props) => {
-
+const TrailGroupInfo = () => {
     // Implement useEffect -> voir dans [] en bas de useEffect qui va reload le tout dès que ça change
+    const props = {
+        infos: {
+            distance: 0,
+            time: 0,
+            speed: 0,
+        },
+        improvements: {
+            distance: 0,
+            time: 0,
+            speed: 0,
+        },
+    }
+
+    const exampleData = [34, 44, 32, 78, 184, 221, 171, 26, 62, 5];
+    const cleanData = exampleData.map((item, i) => ({ x: i*10, y: item }));
+
+    console.log(cleanData);
 
     const today = new Date();
     const tomorrow = new Date(today);
@@ -30,11 +47,10 @@ const TrailGroupInfo = (props) => {
         });
     }
 
-
     return (
-    <div className="flex">
-        <div className="w-1/3 border border-gray-400 p-4 mx-2 my-2">
-            <div className="p-3 flex flex-wrap items-center border border-black">
+    <div className="flex" style={{height: "90vh"}}>
+        <div className="w-1/3 h-full border border-gray-400 p-4 mx-2 my-2">
+            <div className="p-3 h-1/6 flex flex-wrap items-center border border-black">
                 <form onSubmit={handleSubmit} className="flex flex-wrap w-full">
                     <div className="flex items-center mb-2 justify-between w-full lg:w-1/2">
                         <label className="mr-4">From</label>
@@ -53,7 +69,7 @@ const TrailGroupInfo = (props) => {
                     </div>
                 </form>
             </div>
-            <div className="flex items-center mt-2 p-1">
+            <div className="flex h-1/6 items-center mt-2 p-1">
                 <div className="w-full m-2 border-2 border-gray-400">
                     <div className="flex">
                         <div className="w-1/3 flex flex-col">
@@ -69,28 +85,25 @@ const TrailGroupInfo = (props) => {
                         <div className="w-1/4 flex flex-col items-center">
                             <div className="flex items-center mb-2">
                                 <div className="bg-green-500 rounded-full w-4 h-4 m-1 mr-8"></div>
-                                <span>{props.improvement.distance}%</span>
+                                <span>{props.improvements.distance}%</span>
                             </div>
                             <div className="flex items-center mb-2">
                                 <div className="bg-red-500 rounded-full w-4 h-4 m-1 mr-8"></div>
-                                <span>{props.improvement.speed}%</span>
+                                <span>{props.improvements.speed}%</span>
                             </div>
                             <div className="flex items-center mb-2">
                                 <div className="bg-green-500 rounded-full w-4 h-4 m-1 mr-8"></div>
-                                <span>{props.improvement.time}%</span>
+                                <span>{props.improvements.time}%</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div className="w-full m-2 border-2 border-gray-400">
-                {/* import the graph here 
-                    Check React-Vis for a SimpleLineChart
-                */}
+            <div className="w-full h-4/6 m-2 border-2 border-gray-400">
+                <ChartComponent data={cleanData} />
             </div>
         </div>
-        <div className="w-2/3 h-full">
-            <h1 className='text-center text-2xl'>Map</h1>
+        <div className="w-2/3 m-2 h-full">
             <Map />
         </div>
     

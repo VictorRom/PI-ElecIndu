@@ -151,7 +151,8 @@ const Map = () => {
         }
     }, [map, pinRouteGeojson])
 
-    return <div ref={mapContainer} style={{ width: '100vw', height: '100vh' }} />;
+    // return <div ref={mapContainer} style={{ width: '100vw', height: '100vh' }} />;
+    return <div ref={mapContainer} className='h-full w-full'/>;
 };
 
 export default Map;
