@@ -1,7 +1,7 @@
 import React from 'react';
 import { useState } from 'react';
 import Map from '../../components/map/map';
-import ChartComponent from '../../components/chart';
+import LineChart from '../../components/lineChart';
 
 const TrailGroupInfo = () => {
     // Implement useEffect -> voir dans [] en bas de useEffect qui va reload le tout dès que ça change
@@ -100,7 +100,7 @@ const TrailGroupInfo = () => {
                 </div>
             </div>
             <div className="w-full h-4/6 m-2 border-2 border-gray-400">
-                <ChartComponent data={cleanData} />
+                <LineChart />
             </div>
         </div>
         <div className="w-2/3 m-2 h-full">

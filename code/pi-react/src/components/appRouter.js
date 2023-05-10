@@ -4,7 +4,6 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./navbar";
 import Live from "../pages/live/live";
 import TrailGroupInfo from "../pages/trek/trail";
-import Test from "../pages/test";
 
 
 function AppRouter() {
