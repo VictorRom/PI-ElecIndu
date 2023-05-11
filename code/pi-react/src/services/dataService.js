@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const client = axios.create({
-    baseURL: 'http://localhost:5000/api', // à modifier selon l'adresse du serveur
+    baseURL: 'http://localhost:8080/', // à modifier selon l'adresse du serveur
   });
 
 export class TrailData {
@@ -12,7 +12,7 @@ export class TrailData {
     }
 
     get(responseCallback, errorCallback=(_)=>{}) {
-        client.get(`/trail/${this.id}/${this.start}/${this.end}`)
+        client.get(`/trail/dts=${this.start}&dte=${this.end}`)
             .then(response => {
                 responseCallback(response.data)
             }).catch(error => {
@@ -27,13 +27,8 @@ export class LiveData {
         this.id = idTrakker;
     }
 
-    /**
-     * Get the data of the trakker of 24 last hours
-     * @param {({points:[number], trailInfos:{}, globalImp:number, denivele:[number]}) => void} responseCallback
-     * @param {(error) => void} errorCallback
-     */
     get(responseCallback, errorCallback=(_)=>{}) {
-        client.get(`/live/${this.id}`)
+        client.get(`/live`)
             .then(response => {
                 responseCallback(response.data)
             }).catch(error => {
