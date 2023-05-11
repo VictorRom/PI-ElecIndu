@@ -21,7 +21,7 @@ function Navbar() {
       <h1 className="w-2/12 flex flex-wrap items-center">
           <Link to="/" className='inline-flex items-center'>
             <img src={require('../assets/images/meditracker-logo.png')} alt="Meditracker Logo" className="w-1/6 flex"/>
-            <span className="flex text-black-500 font-bold text-2xl ml-3">Meditracker</span>
+            <span className="flex text-black-500 font-bold text-2xl ml-3">MediTrakker</span>
             <span className="flex text-black-500 font-bold text-2xl mb-3">TM</span>
           </Link>
       </h1>
