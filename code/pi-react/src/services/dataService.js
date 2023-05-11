@@ -12,7 +12,7 @@ export class TrailData {
     }
 
     get(responseCallback, errorCallback=(_)=>{}) {
-        client.get(`/trail/dts=${this.start}&dte=${this.end}`)
+        client.get(`/trail/dts=${this.start}&dte=${this.end}&proto=${this.id}`)
             .then(response => {
                 responseCallback(response.data)
             }).catch(error => {
@@ -28,7 +28,7 @@ export class LiveData {
     }
 
     get(responseCallback, errorCallback=(_)=>{}) {
-        client.get(`/live`)
+        client.get(`/live/proto=${this.id}`)
             .then(response => {
                 responseCallback(response.data)
             }).catch(error => {
