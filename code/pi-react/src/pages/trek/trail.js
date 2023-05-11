@@ -5,7 +5,7 @@ import LineChart from '../../components/lineChart';
 
 const TrailGroupInfo = () => {
     // Implement useEffect -> voir dans [] en bas de useEffect qui va reload le tout dès que ça change
-    const props = {
+    const page_props = {
         infos: {
             distance: 0,
             time: 0,
@@ -18,10 +18,20 @@ const TrailGroupInfo = () => {
         },
     }
 
-    const exampleData = [34, 44, 32, 78, 184, 221, 171, 26, 62, 5];
-    const cleanData = exampleData.map((item, i) => ({ x: i*10, y: item }));
-
-    console.log(cleanData);
+    const data1 = [
+        { x: '2020-01-01 12:00:00', y: 500 },
+        { x: '2020-01-02 12:10:00', y: 500 },
+        { x: '2020-01-03 12:20:00', y: 520 },
+        { x: '2020-01-03 12:30:00', y: 550 },
+        { x: '2020-01-03 12:40:00', y: 550 },
+        { x: '2020-01-03 12:50:00', y: 580 },
+        { x: '2020-01-01 13:00:00', y: 610 },
+        { x: '2020-01-02 13:10:00', y: 670 },
+        { x: '2020-01-03 13:20:00', y: 690 },
+        { x: '2020-01-03 13:30:00', y: 710 },
+        { x: '2020-01-03 13:40:00', y: 700 },
+        { x: '2020-01-03 13:50:00', y: 1600 },
+    ];
 
     const today = new Date();
     const tomorrow = new Date(today);
@@ -50,7 +60,7 @@ const TrailGroupInfo = () => {
     return (
     <div className="flex" style={{height: "90vh"}}>
         <div className="w-1/3 h-full border border-gray-400 p-4 mx-2 my-2">
-            <div className="p-3 h-1/6 flex flex-wrap items-center border border-black">
+            <div className="p-3 h-1/6 flex flex-wrap items-center border-2 border-gray-400">
                 <form onSubmit={handleSubmit} className="flex flex-wrap w-full">
                     <div className="flex items-center mb-2 justify-between w-full lg:w-1/2">
                         <label className="mr-4">From</label>
@@ -69,8 +79,8 @@ const TrailGroupInfo = () => {
                     </div>
                 </form>
             </div>
-            <div className="flex h-1/6 items-center mt-2 p-1">
-                <div className="w-full m-2 border-2 border-gray-400">
+            <div className="flex h-1/8 items-center mt-2 my-2">
+                <div className="w-full border-2 border-gray-400">
                     <div className="flex">
                         <div className="w-1/3 flex flex-col">
                             <label className="text-left m-1">Distance covered:</label>
@@ -78,29 +88,29 @@ const TrailGroupInfo = () => {
                             <label className="text-left m-1">Total time:</label>
                         </div>
                         <div className="w-1/3 flex flex-col border-r-2 border-gray-400">
-                            <span className='m-1'>{props.infos.distance} km</span>
-                            <span className='m-1'>{props.infos.speed} km/h</span>
-                            <span className='m-1'>{props.infos.time} hours</span>
+                            <span className='m-1'>{page_props.infos.distance} km</span>
+                            <span className='m-1'>{page_props.infos.speed} km/h</span>
+                            <span className='m-1'>{page_props.infos.time} hours</span>
                         </div>
                         <div className="w-1/4 flex flex-col items-center">
                             <div className="flex items-center mb-2">
                                 <div className="bg-green-500 rounded-full w-4 h-4 m-1 mr-8"></div>
-                                <span>{props.improvements.distance}%</span>
+                                <span>{page_props.improvements.distance}%</span>
                             </div>
                             <div className="flex items-center mb-2">
                                 <div className="bg-red-500 rounded-full w-4 h-4 m-1 mr-8"></div>
-                                <span>{props.improvements.speed}%</span>
+                                <span>{page_props.improvements.speed}%</span>
                             </div>
                             <div className="flex items-center mb-2">
                                 <div className="bg-green-500 rounded-full w-4 h-4 m-1 mr-8"></div>
-                                <span>{props.improvements.time}%</span>
+                                <span>{page_props.improvements.time}%</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div className="w-full h-4/6 m-2 border-2 border-gray-400">
-                <LineChart />
+            <div className="w-full h-4/6 border-2 border-gray-400">
+                <LineChart data={data1} lineName="Altitude"/>
             </div>
         </div>
         <div className="w-2/3 m-2 h-full">
