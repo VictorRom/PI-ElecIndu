@@ -56,12 +56,16 @@ async def root():
 # }
 
 @app.get("/live/proto={proto}")
-async def live_page(proto: int): # TODO on doit refaire la requete pour recuperer les jours compris dans les dernières 24h
-    date = datetime.now() - timedelta(days=1)
+async def live_page(proto: int):
+    dts = datetime.now() - timedelta(days=1)
+    dts = dts.replace(minute=dts.minute - dts.minute % 10, second=0, microsecond=0)
+    dte = datetime.now()
+    dte = dte.replace(minute=dte.minute - dte.minute % 10, second=0, microsecond=0)
+
     query = {
         "properties.timestamp": {
             "$elemMatch": {
-                "$gte": date,
+                "$gte": dts,
             }
         },
         "properties.prototype": {
@@ -71,16 +75,33 @@ async def live_page(proto: int): # TODO on doit refaire la requete pour recupere
 
     results = list(collection.find(query))
 
-    # convert the objectid to a string
-    for res in results:
-        res["_id"] = str(res["_id"])
+    points = []; timestamps = []; speeds = []
+    for day in results:
+        # get the index of the first and last point that is in the time range
+        first_index = -1
+        last_index = -1
+        for i in range(len(day["properties"]["timestamp"])):
+            if day["properties"]["timestamp"][i] == dts:
+                first_index = i
+            if day["properties"]["timestamp"][i] == dte:
+                last_index = i
+                break
 
-    # TODO enlever les infos (points, timestamp, speed) qui ne sont pas dans les dernières 24h
-    ## + flatten les données pour avoir un seul "tableau" (voir le format de retour de la route)
+        # do something cause error if no point in the time range
+        if first_index == -1 or last_index == -1:
+            pass
 
-    return {"points": results}
+        for i in range(first_index, last_index):
+            # add the points, timestamps, speeds and elevations to the lists
+            points.append(day["geometry"]["coordinates"][i])
+            timestamps.append(day["properties"]["timestamp"][i])
+            speeds.append(day["properties"]["speed"][i])
 
-
+    return {
+        "points": points,
+        "timestamps": timestamps,
+        "speeds": speeds
+    }
 
 # Route trail retourne ça :
 # {
@@ -107,6 +128,10 @@ async def trail_page(dts: datetime, dte: datetime, proto: int):
     if dts > dte:
         return {"message": "Invalid dates"}
 
+    # round the dates to the nearest 10 minutes
+    dts = dts.replace(minute=dts.minute - dts.minute % 10, second=0, microsecond=0)
+    dte = dte.replace(minute=dte.minute - dte.minute % 10, second=0, microsecond=0)
+
     # get the database entry days between dts and dte from the database and return them
     query = {
         "properties.timestamp": {
@@ -130,15 +155,15 @@ async def trail_page(dts: datetime, dte: datetime, proto: int):
         first_index = -1
         last_index = -1
         for i in range(len(day["properties"]["timestamp"])): # >= just to be sure but == should be enough
-            if day["properties"]["timestamp"][i] >= dts:
+            if day["properties"]["timestamp"][i] == dts:
                 first_index = i
-            if day["properties"]["timestamp"][i] >= dte:
+            if day["properties"]["timestamp"][i] == dte:
                 last_index = i
                 break
 
         # do something cause error if no point in the time range
         if first_index == -1 or last_index == -1:
-            pass
+            return {"message": "No data in the time range or invalid dates"}
 
         total_time = (day["properties"]["timestamp"][last_index] - day["properties"]["timestamp"][first_index]).total_seconds()
         time_sum_second += total_time # if multiple days, this will be the sum of all the days
@@ -167,7 +192,8 @@ async def trail_page(dts: datetime, dte: datetime, proto: int):
     concatenated_longitude = concatenated_longitude[:-1] # remove the last comma
     request = f"https://api.open-meteo.com/v1/elevation?latitude={concatenated_latitude}&longitude={concatenated_longitude}"
     response = requests.get(request)
-    elevations = response.json()["elevation"]
+
+    elevations = [] if response.status_code != 200 else response.json()["elevation"]
 
     return {
         "points": points,
@@ -228,7 +254,6 @@ async def insert_data():
     speeds = [random() * 100 for i in range(144)]
     data.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": coordinates}, "properties": {"speed": speeds, "timestamp": timestamps, "prototype": 1}})
 
-
     collection.insert_many(data)
 
     return {"message": "Data inserted"}
@@ -239,9 +264,8 @@ async def insert_data():
 #################
 @app.delete("/gps/delete/dts={dts}&dte={dte}&proto={proto}", response_description="GPS data deleted")
 async def delete_gps_data(dts: datetime, dte: datetime, proto: int):
-    
-    return {"message": "Data deleted"}
 
+    return {"message": "Data deleted"}
 
 
 
