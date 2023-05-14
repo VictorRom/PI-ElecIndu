@@ -27,6 +27,23 @@ def haversine(lat1, lon1, lat2, lon2):
 
     return distance # in km
 
+def request_elevations(latitudes, longitudes):
+    # make request to API for elevation
+    # e.g. request : https://api.open-meteo.com/v1/elevation?latitude=52.52,48.85&longitude=13.41,2.35
+    concatenated_latitude = ""; concatenated_longitude = ""
+    for lat,long in zip(latitudes, longitudes):
+        concatenated_latitude += str(lat) + ","
+        concatenated_longitude += str(long) + ","
+    concatenated_latitude = concatenated_latitude[:-1] # remove the last comma
+    concatenated_longitude = concatenated_longitude[:-1] # remove the last comma
+    request = f"https://api.open-meteo.com/v1/elevation?latitude={concatenated_latitude}&longitude={concatenated_longitude}"
+    response = requests.get(request)
+
+    return [] if response.status_code != 200 else response.json()["elevation"]
+
+
+
+
 mongodb_connection_string = 'mongodb://localhost:27017'
 client = pm.MongoClient(mongodb_connection_string)
 db = client['elecindu']
@@ -181,19 +198,7 @@ async def trail_page(dts: datetime, dte: datetime, proto: int):
 
     # compute the average speed in km/h
     avg_speed = 0 if time_sum_second == 0 else distance_sum_km / (time_sum_second / 3600) 
-
-    # make request to API for elevation
-    # e.g. request : https://api.open-meteo.com/v1/elevation?latitude=52.52,48.85&longitude=13.41,2.35
-    concatenated_latitude = ""; concatenated_longitude = ""
-    for point in points:
-        concatenated_latitude += str(point[0]) + ","
-        concatenated_longitude += str(point[1]) + ","
-    concatenated_latitude = concatenated_latitude[:-1] # remove the last comma
-    concatenated_longitude = concatenated_longitude[:-1] # remove the last comma
-    request = f"https://api.open-meteo.com/v1/elevation?latitude={concatenated_latitude}&longitude={concatenated_longitude}"
-    response = requests.get(request)
-
-    elevations = [] if response.status_code != 200 else response.json()["elevation"]
+    elevations = request_elevations(points[:, 0], points[:, 1])
 
     return {
         "points": points,
@@ -224,7 +229,9 @@ async def receive_gps_data(data: bytes):
     # TODO process the data, convert to GeoJSON, and store in MongoDB
     tls_key = "key.pem"
     # decode the data using the tls key
-    # transfer the data to the transformer
+
+    # process information from data : request_elevation()
+
     return {"message": "Data received"}
 
 
@@ -265,7 +272,49 @@ async def insert_data():
 @app.delete("/gps/delete/dts={dts}&dte={dte}&proto={proto}", response_description="GPS data deleted")
 async def delete_gps_data(dts: datetime, dte: datetime, proto: int):
 
-    return {"message": "Data deleted"}
+    dts = dts.replace(minute=dts.minute - dts.minute % 10, second=0, microsecond=0)
+    dte = dte.replace(minute=dte.minute - dte.minute % 10, second=0, microsecond=0)
+
+    # Get the data from the database to update it locally
+    query = {
+        "properties.timestamp": {
+            "$elemMatch": {
+                "$gte": dts,
+                "$lte": dte
+            }
+        },
+        "properties.prototype": {
+            "$eq": proto
+        }
+    }
+
+    results = list(collection.find(query))
+    cnt_error = 0
+
+    for day in results:
+        # get the index of the first and last point that is in the time range
+        first_index = -1
+        last_index = -1
+        for i in range(len(day["properties"]["timestamp"])): # >= just to be sure but == should be enough
+            if day["properties"]["timestamp"][i] == dts:
+                first_index = i
+            if day["properties"]["timestamp"][i] == dte:
+                last_index = i
+                break
+        
+        # remove the values insides the array with the indexes
+        day["geometry"]["coordinates"] = day["geometry"]["coordinates"][:first_index] + day["geometry"]["coordinates"][last_index + 1:]
+        day["properties"]["speed"] = day["properties"]["speed"][:first_index] + day["properties"]["speed"][last_index + 1:]
+        day["properties"]["timestamp"] = day["properties"]["timestamp"][:first_index] + day["properties"]["timestamp"][last_index + 1:]
+
+        # update the data in the database
+        res = collection.update_one({"_id": day["_id"]}, {"$set": day})
+
+        # test if the update worked
+        if res.modified_count != 1:
+            cnt_error += 1
+
+    return {"message": f"Data updated with {cnt_error} errors on {len(results)}"}
 
 
 
