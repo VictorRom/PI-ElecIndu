@@ -364,5 +364,5 @@ async def delete_gps_data(dts: datetime, dte: datetime, proto: int):
 
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=8080, reload=True)#, ssl_keyfile="key.pem", ssl_certfile="cert.pem")
+    uvicorn.run("app:app", host="0.0.0.0", port=5050, reload=True)#, ssl_keyfile="key.pem", ssl_certfile="cert.pem")
 
