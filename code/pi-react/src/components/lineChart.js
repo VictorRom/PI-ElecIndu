@@ -1,7 +1,8 @@
 import { AnimatedAxis, AnimatedGrid, AnimatedLineSeries, XYChart, Tooltip } from '@visx/xychart';
-// import { AxisBottom, AxisLeft, AxisLabel } from '@visx/axis';
+import { AxisBottom } from '@visx/axis';
+import { format } from 'date-fns'
 
-export default function LineChart ({ data, lineName }) {
+export default function LineChart ({ data, lineNames }) {
     const accessors = {
         xAccessor: (d) => d.x,
         yAccessor: (d) => d.y,
@@ -9,10 +10,17 @@ export default function LineChart ({ data, lineName }) {
     
     return (
         <XYChart xScale={{ type: 'band' }} yScale={{ type: 'linear' }}>
-            <AnimatedAxis orientation="bottom" />
+            {/* <AxisBottom label="Time" /> */}
+            <AnimatedAxis 
+                orientation="bottom"
+                tickFormat={(d) => format(new Date(d), 'HH:mm')}
+            />
             <AnimatedAxis orientation="left" numTicks={5} />
             <AnimatedGrid columns={false} numTicks={4} />
-            <AnimatedLineSeries dataKey={lineName} data={data} {...accessors} />
+
+            {data.map((line, i) => (
+                <AnimatedLineSeries key={i} dataKey={lineNames[i]} data={line} {...accessors} />
+            ))}
             <Tooltip
             snapTooltipToDatumX
             snapTooltipToDatumY
