@@ -36,3 +36,10 @@ services:
     build: ./code/transformer
     networks:
       - mongo
+
+  backend:
+    build: ./code/backend
+    ports:
+      - 5050:5050
+    networks:
+      - mongo

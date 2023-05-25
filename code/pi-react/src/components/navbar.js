@@ -27,12 +27,21 @@ function Navbar() {
       </h1>
       <nav className="nav font-semibold text-lg">
           <ul className="flex items-center">
+            <Link to="/live">
               <li className="p-4 border-b-2 border-green-500 border-opacity-0 hover:border-opacity-100 hover:text-green-500 duration-200 cursor-pointer active">
-                <Link to="/live">Live</Link>
+                Live
               </li>
+            </Link>
+            <Link to="/trail">
               <li className="p-4 border-b-2 border-green-500 border-opacity-0 hover:border-opacity-100 hover:text-green-500 duration-200 cursor-pointer">
-                <Link to="/trail">Trail</Link>
+                Trail
               </li>
+            </Link>
+            <Link to="/delete">
+              <li className="p-4 border-b-2 border-green-500 border-opacity-0 hover:border-opacity-100 hover:text-green-500 duration-200 cursor-pointer">
+                Delete
+              </li>
+            </Link>
           </ul>
       </nav>
 
