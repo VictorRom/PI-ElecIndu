@@ -2,7 +2,7 @@
 import requests # pip install requests
 from datetime import datetime
 
-baseURL = "http://0.0.0.0:5050"
+baseURL = "http://localhost:5050"
 
 def test_trail(dts, dte):
     r = requests.get("{base}/trail/dts={dts}&dte={dte}&proto=1".format(base=baseURL,dts=dts, dte=dte))

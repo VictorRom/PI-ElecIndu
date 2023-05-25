@@ -40,7 +40,7 @@ def request_elevations(latitudes, longitudes):
 
     return [] if response.status_code != 200 else response.json()["elevation"]
 
-mongodb_connection_string = 'mongodb://localhost:27017'
+mongodb_connection_string = 'mongodb://root:example@localhost:27017'
 client = pm.MongoClient(mongodb_connection_string)
 db = client['elecindu']
 gps_collection = db['gps']
@@ -182,7 +182,7 @@ async def trail_page(dts: datetime, dte: datetime, proto: int):
 
     best_segment = ({"distance": 0, "speed": 0,"elevation": 0}, -1) # tuple (segment_info, score)
     worst_segment = ({"distance": 999, "speed": 999,"elevation": 999}, -1)
-
+    total_time = 0
     for day in results:
         # get the index of the first and last point that is in the time range
         first_index = -1
@@ -238,7 +238,7 @@ async def trail_page(dts: datetime, dte: datetime, proto: int):
         "speeds": speeds,
         "elevations": elevations,
         "statistics": {
-            "distance": distance_sum_km, 
+            "distance": distance_sum_km,
             "avg_speed": avg_speed,
             "total_time": total_time
         },
