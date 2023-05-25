@@ -4,26 +4,43 @@ import { getWeatherData } from "../../services/weatherService";
 import Map from "../../components/map/map";
 import DropdownComponent from "../../components/dropdown";
 import LineChart from "../../components/lineChart";
+import axios from "axios";
 
 function formatData(xData, ...yData) {
     return yData.map((yValues) => {
-      return xData.map((xValue, i) => {
-        return {
-          x: xValue,
-          y: yValues[i]
-        };
-      });
+        return xData.map((xValue, i) => {
+            return {
+                x: xValue,
+                y: yValues[i]
+            };
+        });
     });
-  }
-  
+}
+
 
 
 const Live = () => {
     const [weatherData, setWeatherData] = useState({});
     const [selectedPrototype, setSelectedPrototype] = useState("");
-
     // store the weather data of the last 24 hours
     const [weatherData24h, setWeatherData24h] = useState([]);
+    const [pinRouteGeojson, setGeojson] = useState(null);
+    const [proto, setProto] = useState("0");
+
+    useEffect(() => {
+        const fetchData = async () => {
+            axios.get(
+                'https://docs.mapbox.com/mapbox-gl-js/assets/route-pin.geojson'
+                //`http://localhost:8080/live/proto=${proto}`
+            ).then((response) => {
+                const data = response.data;
+                setGeojson(data);
+            });
+        };
+        fetchData();
+    }, [proto]);
+
+    useEffect(() => { }, [pinRouteGeojson]);
 
     const handlePrototypeChange = (newOption) => {
         setSelectedPrototype(newOption);
@@ -80,47 +97,50 @@ const Live = () => {
             const combined = formatData(dataX, temperature, windSpeed); //, humidity);
             // console.log(combined);
             setWeatherData24h(combined);
-        }else{
+        } else {
             console.log("Error while creating weatherData24h, weatherData.hourly is undefined");
         }
     }, [weatherData]);
 
     return (
         <div className="page">
-            <div className="w-full mx-2 my-2 flex" style={{height: "6vh"}}>
+            <div className="w-full mx-2 my-2 flex" style={{ height: "6vh" }}>
                 <div className="p-4 w-1/2 text-center shadow rounded-md">
                     <span>Time since last sensor connection : </span>
                     <span className="text-red-500 ml-2">48min 12s</span>
                 </div>
                 <div className="p-1 w-1/2 flex justify-center items-center shadow rounded-md ">
-                    <span>Choose the number of hours to display : </span>                    
+                    <span>Choose the number of hours to display : </span>
                     <div className="ml-2 w-1/2">
                         <DropdownComponent options={optionsPrototype} onChange={handlePrototypeChange} />
                     </div>
                 </div>
             </div>
-            <div className="flex" style={{height: "84vh"}}>
+            <div className="flex" style={{ height: "84vh" }}>
                 <div className="w-3/4 m-2 rounded-md">
-                        <Map />
+                    {pinRouteGeojson && (
+                        <Map routePoints={pinRouteGeojson} />
+                    )}
+                    {!pinRouteGeojson && (
+                        <p>No data for these entries </p>
+                    )}
                 </div>
                 <div className="w-1/4 shadow border-2 rounded-md p-4 mx-2 my-2 ">
                     <h1 className="text-center text-2xl font-medium border-b-2">Weather Info</h1>
-                    
                     {weatherData && weatherData.current_weather && (
                         <div>
                             <div className="text-center m-4">
                                 <p>Temperature: {weatherData.current_weather.temperature}  °C</p>
                                 <p>Wind Speed: {weatherData.current_weather.windspeed}  km/h</p>
                             </div>
-                                {weatherData24h && (
-                                        <div className="w-full h-1/2 border-2 shadow rounded-md" style={{height: "66vh"}}>
-                                            <LineChart data={weatherData24h} lineNames={["Temperature", "Humidity", "Wind Speed"]} />
-                                        </div>
-                                    )}
+                            {weatherData24h && (
+                                <div className="w-full h-1/2 border-2 shadow rounded-md" style={{ height: "66vh" }}>
+                                    <LineChart data={weatherData24h} lineNames={["Temperature", "Humidity", "Wind Speed"]} />
+                                </div>
+                            )}
                         </div>
                     )}
-                    
-                    {!weatherData && !weatherData.current_weather (
+                    {!weatherData && !weatherData.current_weather(
                         <p>Error while fetching weather data, abort</p>
                     )}
                 </div>

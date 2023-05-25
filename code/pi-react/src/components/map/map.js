@@ -1,28 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import axios from 'axios';
 import * as turf from '@turf/turf';
 
 
 mapboxgl.accessToken = 'pk.eyJ1IjoidnJwbHMiLCJhIjoiY2wxd29ocWR1MDduZDNicDgzOGhkMWczaCJ9.y40lsszh2YysSIHUeWaOgA';
 
-const Map = () => {
+const Map = ({ routePoints }) => {
     const mapContainer = useRef(null);
     const [map, setMap] = useState(null);
-    const [pinRouteGeojson, setGeojson] = useState(null)
-
-    useEffect(() => {
-        const fetchData = async () => {
-            axios.get(
-                'https://docs.mapbox.com/mapbox-gl-js/assets/route-pin.geojson'
-            ).then((response) => {
-                const data = response.data;
-                setGeojson(data);
-            });
-        };
-        fetchData();
-    }, []);
+    const [pinRouteGeojson, ] = useState(routePoints);
 
     useEffect(() => {
         const newMap = new mapboxgl.Map({
@@ -90,22 +77,13 @@ const Map = () => {
             });
 
             map.once('idle', () => {
-                const animationDuration = 20000;
-                // Use the https://turfjs.org/ library to calculate line distances and
-                // sample the line at a given percentage with the turf.along function.
                 const path = turf.lineString(pinRoute);
                 // Get the total line distance
                 const pathDistance = turf.lineDistance(path);
-                let start;
-                function frame(time) {
-                    if (!start) start = time;
-                    const animationPhase = (time - start) / animationDuration;
-                    if (animationPhase > 1) {
-                        return;
-                    }
+                function frame() {
 
                     // Get the new latitude and longitude by sampling along the path
-                    const alongPath = turf.along(path, pathDistance * animationPhase)
+                    const alongPath = turf.along(path, pathDistance)
                         .geometry.coordinates;
                     const lngLat = {
                         lng: alongPath[0],
@@ -129,18 +107,17 @@ const Map = () => {
                         'step',
                         ['line-progress'],
                         'red',
-                        animationPhase,
+                        1,
                         'rgba(255, 0, 0, 0)'
                     ]);
 
                     // Rotate the camera at a slightly lower speed to give some parallax effect in the background
-                    const rotation = 150 - animationPhase * 40.0;
+                    const rotation = 150 - 1 * 40.0;
                     map.setBearing(rotation % 360);
-
-                    window.requestAnimationFrame(frame);
+                    return;
                 }
 
-                window.requestAnimationFrame(frame);
+                frame();
             })
 
             // Nettoyage du marqueur et du pop-up lorsque le composant est démonté
