@@ -4,6 +4,7 @@ import { getWeatherData } from "../../services/weatherService";
 import Map from "../../components/map/map";
 import DropdownComponent from "../../components/dropdown";
 import LineChart from "../../components/lineChart";
+import { formatByHour } from "../../utils/dateUtils";
 
 function formatData(xData, ...yData) {
     return yData.map((yValues) => {
@@ -15,8 +16,6 @@ function formatData(xData, ...yData) {
       });
     });
   }
-  
-
 
 const Live = () => {
     const [weatherData, setWeatherData] = useState({});
@@ -115,19 +114,19 @@ const Live = () => {
                                 {weatherData24h.temperature && (
                                         <div className="w-full h-1/2 border-2 shadow rounded-md" style={{height: chartHeight}}>
                                             {/* <LineChart data={weatherData24h} lineNames={["Temperature", "Humidity", "Wind Speed"]} /> */}
-                                            <LineChart data={weatherData24h.temperature} lineNames={["Temperature"]} />
+                                            <LineChart data={weatherData24h.temperature} lineNames={["Temperature"]} xAxisTickFormat={formatByHour} />
                                         </div>
                                     )}
 
                                 {weatherData24h.windspeed && (
                                         <div className="w-full h-1/2 border-2 shadow rounded-md" style={{height: chartHeight}}>
-                                            <LineChart data={weatherData24h.windspeed} lineNames={["Wind speed"]} />
+                                            <LineChart data={weatherData24h.windspeed} lineNames={["Wind speed"]} xAxisTickFormat={formatByHour} />
                                         </div>
                                     )}
 
                                 {weatherData24h.humidity && (
                                         <div className="w-full h-1/2 border-2 shadow rounded-md" style={{height: chartHeight}}>
-                                            <LineChart data={weatherData24h.humidity} lineNames={["Humidity"]} />
+                                            <LineChart data={weatherData24h.humidity} lineNames={["Humidity"]} xAxisTickFormat={formatByHour} />
                                         </div>
                                     )}
                         </div>

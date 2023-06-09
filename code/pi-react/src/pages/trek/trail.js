@@ -142,8 +142,8 @@ const TrailGroupInfo = () => {
                     </div>
                 </div>
             </div>
-            <div className="w-full h-4/6 border-2 shadow rounded-md">
-                <LineChart data={data1} lineNames={["Altitude"]}/>
+            <div className="w-full h-4/6 border-2 shadow rounded-md p-4">
+                <LineChart data={data1} lineNames={["Elevation"]}/>
             </div>
         </div>
         <div className="w-2/3 m-2 h-full">
