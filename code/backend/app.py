@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from pydantic import BaseModel
 from pydantic.fields import *
@@ -361,8 +362,14 @@ async def delete_gps_data(dts: datetime, dte: datetime, proto: int):
 
     return {"message": f"Data updated with {cnt_error} errors on {len(results)}"}
 
-
-
 if __name__ == "__main__":
+    origins = ['http://localhost:3000']
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     uvicorn.run("app:app", host="0.0.0.0", port=5050, reload=True)#, ssl_keyfile="key.pem", ssl_certfile="cert.pem")
 
