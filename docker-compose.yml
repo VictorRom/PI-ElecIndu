@@ -35,7 +35,7 @@ services:
   transformer:
     build: ./code/transformer
     ports:
-      - 5000:5000
+      - 6000:6000
     networks:
       - mongo
 
@@ -43,5 +43,12 @@ services:
     build: ./code/backend
     ports:
       - 5050:5050
+    networks:
+      - mongo
+
+  frontend:
+    build: ./code/frontend
+    ports:
+      - 3000:3000
     networks:
       - mongo

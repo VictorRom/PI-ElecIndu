@@ -43,4 +43,4 @@ def handleData(data):
 
 
 if __name__ == '__main__':
-    server_program(sock.gethostname(), 5000, handleData)
+    server_program(sock.gethostname(), 6000, handleData)
