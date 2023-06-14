@@ -145,15 +145,15 @@ async def live_page(proto: int):
             "speeds": speeds,
             "device_last_update": minutes_since_last_point
         }, status.HTTP_200_OK
-    
+
     except pm.errors.PyMongoError as e:
         print(e)
         return {"message": "Database error"}, status.HTTP_500_INTERNAL_SERVER_ERROR
     except Exception as e:
         print(e)
         return {"message": "An general error occured"}, status.HTTP_500_INTERNAL_SERVER_ERROR
-        
 
+'''
 # Route trail retourne ça :
 # {
     # "points": [[lat, lon], [lat, lon], ...]
@@ -166,7 +166,7 @@ async def live_page(proto: int):
         # "total_time": float,
     # }
     # "global_stats": {
-    #    "distance": float, 
+    #    "distance": float,
     #    "avg_speed": float,
     #    "total_time": float,
     # }
@@ -183,6 +183,7 @@ async def live_page(proto: int):
     #   },
     # }
 # }
+'''
 
 # on passe les data en json sans passer par le body ?
 @app.get("/trail/dts={dts}&dte={dte}&proto={proto}")
@@ -224,13 +225,16 @@ async def trail_page(dts: datetime, dte: datetime, proto: int):
         for day in results:
             # get the index of the first and last point that is in the time range
             first_index = -1; last_index = -1
+            #return {"message": f"{ day['properties']['timestamp'] } {dte} "}, status.HTTP_404_NOT_FOUND
             for i in range(len(day["properties"]["timestamp"])):
                 # we use <= and >= because it's possible that some data points may be missing due to the delete route
-                if day["properties"]["timestamp"][i] >= dts:
+                if day["properties"]["timestamp"][i] >= dts and first_index == -1:
                     first_index = i
                 if day["properties"]["timestamp"][i] <= dte:
                     last_index = i
-                    break
+
+            #return {"message": f"{first_index} {last_index}"}, status.HTTP_404_NOT_FOUND
+
 
             # do something cause error if no point in the time range
             if first_index == -1 or last_index == -1:
@@ -269,14 +273,14 @@ async def trail_page(dts: datetime, dte: datetime, proto: int):
             # check the return
             if res_stats is None:
                 return {"message": "No global stats found"}, status.HTTP_404_NOT_FOUND
-                
+
             return {
                 "points": points,
                 "timestamps": timestamps,
                 "speeds": speeds,
                 "elevations": elevations,
                 "statistics": {
-                    "distance": distance_sum_km, 
+                    "distance": distance_sum_km,
                     "avg_speed": avg_speed,
                     "total_time": total_time
                 },
@@ -290,14 +294,14 @@ async def trail_page(dts: datetime, dte: datetime, proto: int):
                     "worst": worst_segment[0]
                 },
             }, status.HTTP_200_OK
-        
+
         except pm.errors.PyMongoError as e:
             print(e)
             return {"message": "Database error when getting global stats"}, status.HTTP_500_INTERNAL_SERVER_ERROR
         except Exception as e:
             print(e)
             return {"message": "A general error occured when getting global stats"}, status.HTTP_500_INTERNAL_SERVER_ERROR
-    
+
     except pm.errors.PyMongoError as e:
         print(e)
         return {"message": "Database error"}, status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -324,35 +328,36 @@ async def receive_gps_data(data: bytes):
 
     return {"message": "Data received"}, status.HTTP_200_OK
 
+def create_path(start_lon, start_lat, nb_pts):
+    path = []
+    last_pos = [start_lon, start_lat]
+    for _ in range(nb_pts):
+        curr = [last_pos[0] + random() / 200, last_pos[1] + random() / 200]
+        path.append(curr)
+        last_pos = curr
+    return path
 
 # Fonction de test pour les devs
+def create_data(start_date, nb_days, pts_per_day, proto):
+    data = []
+    for i in range(nb_days):
+        date = start_date + timedelta(days=i)
+        coordinates = create_path(7.35, 46.22, pts_per_day)
+        timestamps = [date + timedelta(minutes=10 * j) for j in range(pts_per_day)]
+        speeds = [random() * 100 for _ in range(pts_per_day)]
+        elevations = [random() * 1000 for _ in range(pts_per_day)]
+        data.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": coordinates}, "properties": {"speed": speeds, "timestamp": timestamps, "prototype": proto, "elevation": elevations}})
+    return data
 
 @app.get("/insert_data")
 async def insert_data():
-    data = []
-    for i in range(10):
-        date = datetime(2023, 4, 15 + i, 0, 0, 0)
-        coordinates = [[6.0 + random() / 2, 45 + random() / 2] for i in range(144)]
-        timestamps = [date + timedelta(minutes=10 * i) for i in range(144)]
-        speeds = [random() * 100 for i in range(144)]
-        elevations = [random() * 1000 for i in range(144)]
-        data.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": coordinates}, "properties": {"speed": speeds, "timestamp": timestamps, "prototype": 1, "elevation": elevations}})
+    # data for trail page
+    data = create_data(datetime(2023, 4, 15, 0, 0, 0), 10, 144, 1)
 
-    date_today = datetime.now()
-    date_today = date_today.replace(minute=date_today.minute - date_today.minute % 10, second=0, microsecond=0)
-    coordinates = [[6.0 + random() / 2, 45 + random() / 2] for i in range(144)]
-    timestamps = [date_today + timedelta(minutes=10 * i) for i in range(144)]
-    speeds = [random() * 100 for i in range(144)]
-    elevations = [random() * 1000 for i in range(144)]
-    data.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": coordinates}, "properties": {"speed": speeds, "timestamp": timestamps, "prototype": 1, "elevation": elevations}})
-
+    # data for live page
     date_yesterday = datetime.now() - timedelta(days=1)
     date_yesterday = date_yesterday.replace(minute=date_yesterday.minute - date_yesterday.minute % 10, second=0, microsecond=0)
-    coordinates = [[6.0 + random() / 2, 45 + random() / 2] for i in range(144)]
-    timestamps = [date_yesterday + timedelta(minutes=10 * i) for i in range(144)]
-    speeds = [random() * 100 for i in range(144)]
-    elevations = [random() * 1000 for i in range(144)]
-    data.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": coordinates}, "properties": {"speed": speeds, "timestamp": timestamps, "prototype": 1, "elevation": elevations}})
+    data.extend(create_data(date_yesterday, 2, 144, 1))
 
     try:
         gps_collection.insert_many(data)
@@ -363,7 +368,7 @@ async def insert_data():
     except Exception as e:
         print(e)
         return {"message": "A general error occured"}, status.HTTP_500_INTERNAL_SERVER_ERROR
-    
+
     try:
         # insert stats for prototypes
         stats_collection.insert_one({"prototype": 1, "distance": 500, "speed": 2, "elevation": 60})
@@ -384,6 +389,7 @@ async def insert_data():
 #################
 @app.delete("/gps/delete/dts={dts}&dte={dte}&proto={proto}", response_description="GPS data deleted")
 async def delete_gps_data(dts: datetime, dte: datetime, proto: int):
+    print(dts, dte, proto)
     dts = dts.replace(minute=dts.minute - dts.minute % 10, second=0, microsecond=0)
     dte = dte.replace(minute=dte.minute - dte.minute % 10, second=0, microsecond=0)
 
@@ -421,7 +427,7 @@ async def delete_gps_data(dts: datetime, dte: datetime, proto: int):
                 if day["properties"]["timestamp"][i] <= dte:
                     last_index = i
                     break
-            
+
             if first_index == -1 or last_index == -1:
                 return {"message": "Invalid dates"}, status.HTTP_400_BAD_REQUEST
 
