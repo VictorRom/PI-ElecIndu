@@ -480,8 +480,8 @@ if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0",
                 port=5050,
                 reload=True,
-                ssl_cert_reqs=ssl.CERT_REQUIRED,
                 ssl_certfile="./certs/drominger.ddns.net.pem",
                 ssl_keyfile="./certs/drominger.ddns.net-key.pem",
                 ssl_ca_certs="./certs/rootCA.pem",
+                ssl_cert_reqs=2,
                 log_level="debug")

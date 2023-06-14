@@ -10,8 +10,6 @@ services:
   mongo:
     image: mongo:4.4.10
     restart: always
-    volumes:
-      - './data:/data'
     ports:
       - 27017:27017
     environment:
