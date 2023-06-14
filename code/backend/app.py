@@ -1,12 +1,14 @@
-from fastapi import FastAPI, status
+from fastapi import FastAPI, status, HTTPException
 import uvicorn
+import ssl
 from pydantic import BaseModel
-from pydantic.fields import *
 from datetime import datetime, timedelta
 import pymongo as pm
 import math
 from random import random
 import requests
+from starlette.requests import Request
+
 
 def haversine(lat1, lon1, lat2, lon2):
     # Convert latitude and longitude from degrees to radians
@@ -24,21 +26,24 @@ def haversine(lat1, lon1, lat2, lon2):
     # Calculate the distance
     distance = c * radius
 
-    return distance # in km
+    return distance  # in km
+
 
 def request_elevations(latitudes, longitudes):
     # make request to API for elevation
     # e.g. request : https://api.open-meteo.com/v1/elevation?latitude=52.52,48.85&longitude=13.41,2.35
-    concatenated_latitude = ""; concatenated_longitude = ""
-    for lat,long in zip(latitudes, longitudes):
+    concatenated_latitude = "";
+    concatenated_longitude = ""
+    for lat, long in zip(latitudes, longitudes):
         concatenated_latitude += str(lat) + ","
         concatenated_longitude += str(long) + ","
-    concatenated_latitude = concatenated_latitude[:-1] # remove the last comma
-    concatenated_longitude = concatenated_longitude[:-1] # remove the last comma
+    concatenated_latitude = concatenated_latitude[:-1]  # remove the last comma
+    concatenated_longitude = concatenated_longitude[:-1]  # remove the last comma
     request = f"https://api.open-meteo.com/v1/elevation?latitude={concatenated_latitude}&longitude={concatenated_longitude}"
     response = requests.get(request)
 
     return [] if response.status_code != 200 else response.json()["elevation"]
+
 
 mongodb_connection_string = 'mongodb://root:example@mongo:27017'
 client = pm.MongoClient(mongodb_connection_string)
@@ -46,12 +51,15 @@ db = client['elecindu']
 gps_collection = db['gps']
 stats_collection = db['stats']
 
+
 class GPSData(BaseModel):
     type: str
     geometry: dict
     properties: dict
 
+
 app = FastAPI()
+
 
 ##############
 # GET ROUTES #
@@ -59,15 +67,16 @@ app = FastAPI()
 @app.get("/")
 async def root():
     print("GET /")
-    return {"message": "Hello World"}
+
+    return {"message": "Hello"}
 
 
 # Route live retourne ça :
 # {
-    # "points": [[lat, lon], [lat, lon], ...]
-    # "timestamps": [...],
-    # "speeds": [...],
-    # "device_last_update": int, # minutes
+# "points": [[lat, lon], [lat, lon], ...]
+# "timestamps": [...],
+# "speeds": [...],
+# "device_last_update": int, # minutes
 # }
 
 @app.get("/live/proto={proto}")
@@ -88,16 +97,19 @@ async def live_page(proto: int):
         }
     }
 
-    try :
+    try:
         results = list(gps_collection.find(query))
 
         if len(results) == 0:
             return {"message": "No data found"}, status.HTTP_404_NOT_FOUND
 
-        points = []; timestamps = []; speeds = []
+        points = [];
+        timestamps = [];
+        speeds = []
         for day in results:
             # get the index of the first and last point that is in the time range
-            first_index = -1; last_index = -1
+            first_index = -1;
+            last_index = -1
             # we go through the timestamps of the day, but the dts and dte aren't in the same day
             for i in range(len(day["properties"]["timestamp"])):
                 # so if we find the dts, we start at this index and we take all the points until the end of the day
@@ -133,43 +145,43 @@ async def live_page(proto: int):
             "speeds": speeds,
             "device_last_update": minutes_since_last_point
         }, status.HTTP_200_OK
-    
+
     except pm.errors.PyMongoError as e:
         print(e)
         return {"message": "Database error"}, status.HTTP_500_INTERNAL_SERVER_ERROR
     except Exception as e:
         print(e)
         return {"message": "An general error occured"}, status.HTTP_500_INTERNAL_SERVER_ERROR
-        
+
 
 # Route trail retourne ça :
 # {
-    # "points": [[lat, lon], [lat, lon], ...]
-    # "timestamps": [...],
-    # "speeds": [...],
-    # "elevations": [...],
-    # "statistics": {
-        # "distance": float,
-        # "avg_speed": float,
-        # "total_time": float,
-    # }
-    # "global_stats": {
-    #    "distance": float, 
-    #    "avg_speed": float,
-    #    "total_time": float,
-    # }
-    # "segments": {
-    #    "best": {
-    #       "distance": float,
-    #       "speed": float,
-    #       "elevation": float,
-    #   },
-    #   "worst": {
-    #       "distance": float,
-    #       "speed": float,
-    #       "elevation": float,
-    #   },
-    # }
+# "points": [[lat, lon], [lat, lon], ...]
+# "timestamps": [...],
+# "speeds": [...],
+# "elevations": [...],
+# "statistics": {
+# "distance": float,
+# "avg_speed": float,
+# "total_time": float,
+# }
+# "global_stats": {
+#    "distance": float,
+#    "avg_speed": float,
+#    "total_time": float,
+# }
+# "segments": {
+#    "best": {
+#       "distance": float,
+#       "speed": float,
+#       "elevation": float,
+#   },
+#   "worst": {
+#       "distance": float,
+#       "speed": float,
+#       "elevation": float,
+#   },
+# }
 # }
 
 # on passe les data en json sans passer par le body ?
@@ -203,15 +215,20 @@ async def trail_page(dts: datetime, dte: datetime, proto: int):
             return {"message": "No data found"}, status.HTTP_404_NOT_FOUND
 
         # compute some statistics on the data (distance, avg speed, total time) and create the arrays for the return
-        time_sum_second = 0; distance_sum_km = 0
-        points = []; timestamps = []; speeds = []; elevations = []
+        time_sum_second = 0;
+        distance_sum_km = 0
+        points = [];
+        timestamps = [];
+        speeds = [];
+        elevations = []
 
-        best_segment = ({"distance": 0, "speed": 0,"elevation": 0}, -1) # tuple (segment_info, score)
-        worst_segment = ({"distance": 999, "speed": 999,"elevation": 999}, -1)
+        best_segment = ({"distance": 0, "speed": 0, "elevation": 0}, -1)  # tuple (segment_info, score)
+        worst_segment = ({"distance": 999, "speed": 999, "elevation": 999}, -1)
 
         for day in results:
             # get the index of the first and last point that is in the time range
-            first_index = -1; last_index = -1
+            first_index = -1;
+            last_index = -1
             for i in range(len(day["properties"]["timestamp"])):
                 # we use <= and >= because it's possible that some data points may be missing due to the delete route
                 if day["properties"]["timestamp"][i] >= dts:
@@ -224,13 +241,14 @@ async def trail_page(dts: datetime, dte: datetime, proto: int):
             if first_index == -1 or last_index == -1:
                 return {"message": "No data in the time range or invalid dates"}, status.HTTP_400_BAD_REQUEST
 
-            total_time = (day["properties"]["timestamp"][last_index] - day["properties"]["timestamp"][first_index]).total_seconds()
-            time_sum_second += total_time # if multiple days, this will be the sum of all the days
+            total_time = (day["properties"]["timestamp"][last_index] - day["properties"]["timestamp"][
+                first_index]).total_seconds()
+            time_sum_second += total_time  # if multiple days, this will be the sum of all the days
 
             # compute the distance between each lat/lon in the coordinates list
             for i in range(first_index, last_index):
                 point1 = day["geometry"]["coordinates"][i]
-                point2 = day["geometry"]["coordinates"][i+1]
+                point2 = day["geometry"]["coordinates"][i + 1]
                 distance = haversine(point1[1], point1[0], point2[1], point2[0])
                 distance_sum_km += distance
 
@@ -241,12 +259,17 @@ async def trail_page(dts: datetime, dte: datetime, proto: int):
                 elevations.append(day["properties"]["elevation"][i])
 
                 # get the best and worse segments of 10 minutes
-                coeff_distance = 0.5; coeff_speed = 0.3; coeff_elevation = 0.2
-                segment_score = distance * coeff_distance + day["properties"]["speed"][i] * coeff_speed + day["properties"]["elevation"][i] * coeff_elevation
+                coeff_distance = 0.5;
+                coeff_speed = 0.3;
+                coeff_elevation = 0.2
+                segment_score = distance * coeff_distance + day["properties"]["speed"][i] * coeff_speed + \
+                                day["properties"]["elevation"][i] * coeff_elevation
                 if best_segment[1] < segment_score or best_segment[1] != -1:
-                    best_segment = ({ "distance": distance, "speed": day["properties"]["speed"][i], "elevation": day["properties"]["elevation"][i] }, segment_score)
+                    best_segment = ({"distance": distance, "speed": day["properties"]["speed"][i],
+                                     "elevation": day["properties"]["elevation"][i]}, segment_score)
                 if worst_segment[1] > segment_score or worst_segment[1] == -1:
-                    worst_segment = ({ "distance": distance, "speed": day["properties"]["speed"][i], "elevation": day["properties"]["elevation"][i] }, segment_score)
+                    worst_segment = ({"distance": distance, "speed": day["properties"]["speed"][i],
+                                      "elevation": day["properties"]["elevation"][i]}, segment_score)
 
         # compute the average speed in km/h
         avg_speed = 0 if time_sum_second == 0 else distance_sum_km / (time_sum_second / 3600)
@@ -257,14 +280,14 @@ async def trail_page(dts: datetime, dte: datetime, proto: int):
             # check the return
             if res_stats is None:
                 return {"message": "No global stats found"}, status.HTTP_404_NOT_FOUND
-                
+
             return {
                 "points": points,
                 "timestamps": timestamps,
                 "speeds": speeds,
                 "elevations": elevations,
                 "statistics": {
-                    "distance": distance_sum_km, 
+                    "distance": distance_sum_km,
                     "avg_speed": avg_speed,
                     "total_time": total_time
                 },
@@ -278,14 +301,15 @@ async def trail_page(dts: datetime, dte: datetime, proto: int):
                     "worst": worst_segment[0]
                 },
             }, status.HTTP_200_OK
-        
+
         except pm.errors.PyMongoError as e:
             print(e)
             return {"message": "Database error when getting global stats"}, status.HTTP_500_INTERNAL_SERVER_ERROR
         except Exception as e:
             print(e)
-            return {"message": "A general error occured when getting global stats"}, status.HTTP_500_INTERNAL_SERVER_ERROR
-    
+            return {
+                "message": "A general error occured when getting global stats"}, status.HTTP_500_INTERNAL_SERVER_ERROR
+
     except pm.errors.PyMongoError as e:
         print(e)
         return {"message": "Database error"}, status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -298,12 +322,12 @@ async def trail_page(dts: datetime, dte: datetime, proto: int):
 # POST ROUTES #
 ###############
 
-# TODO on va recevoir les données de la dernière heures, donc 6 points. On va devoir mettre à jour la dernière entrée de la base de données en ajoutant les 6 points à la fin de la liste de points (aussi speed et timestamp)
+# TODO on va recevoir les données de la dernière heures, donc 6 points.
+#  On va devoir mettre à jour la dernière entrée de la base de données en ajoutant les 6 points à la fin de
+#  la liste de points (aussi speed et timestamp)
 
 @app.post("/gps", response_description="GPS data received")
-async def receive_gps_data(data: bytes):
-    # TODO process the data, convert to GeoJSON, and store in MongoDB
-    tls_key = "key.pem"
+async def receive_gps_data(data):
     # decode the data using the tls key
 
     # process information from data : request_elevation()
@@ -324,7 +348,8 @@ async def insert_data():
         timestamps = [date + timedelta(minutes=10 * i) for i in range(144)]
         speeds = [random() * 100 for i in range(144)]
         elevations = [random() * 1000 for i in range(144)]
-        data.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": coordinates}, "properties": {"speed": speeds, "timestamp": timestamps, "prototype": 1, "elevation": elevations}})
+        data.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": coordinates},
+                     "properties": {"speed": speeds, "timestamp": timestamps, "prototype": 1, "elevation": elevations}})
 
     date_today = datetime.now()
     date_today = date_today.replace(minute=date_today.minute - date_today.minute % 10, second=0, microsecond=0)
@@ -332,15 +357,18 @@ async def insert_data():
     timestamps = [date_today + timedelta(minutes=10 * i) for i in range(144)]
     speeds = [random() * 100 for i in range(144)]
     elevations = [random() * 1000 for i in range(144)]
-    data.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": coordinates}, "properties": {"speed": speeds, "timestamp": timestamps, "prototype": 1, "elevation": elevations}})
+    data.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": coordinates},
+                 "properties": {"speed": speeds, "timestamp": timestamps, "prototype": 1, "elevation": elevations}})
 
     date_yesterday = datetime.now() - timedelta(days=1)
-    date_yesterday = date_yesterday.replace(minute=date_yesterday.minute - date_yesterday.minute % 10, second=0, microsecond=0)
+    date_yesterday = date_yesterday.replace(minute=date_yesterday.minute - date_yesterday.minute % 10, second=0,
+                                            microsecond=0)
     coordinates = [[6.0 + random() / 2, 45 + random() / 2] for i in range(144)]
     timestamps = [date_yesterday + timedelta(minutes=10 * i) for i in range(144)]
     speeds = [random() * 100 for i in range(144)]
     elevations = [random() * 1000 for i in range(144)]
-    data.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": coordinates}, "properties": {"speed": speeds, "timestamp": timestamps, "prototype": 1, "elevation": elevations}})
+    data.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": coordinates},
+                 "properties": {"speed": speeds, "timestamp": timestamps, "prototype": 1, "elevation": elevations}})
 
     try:
         gps_collection.insert_many(data)
@@ -351,7 +379,7 @@ async def insert_data():
     except Exception as e:
         print(e)
         return {"message": "A general error occured"}, status.HTTP_500_INTERNAL_SERVER_ERROR
-    
+
     try:
         # insert stats for prototypes
         stats_collection.insert_one({"prototype": 1, "distance": 500, "speed": 2, "elevation": 60})
@@ -362,7 +390,6 @@ async def insert_data():
     except Exception as e:
         print(e)
         return {"message": "A general error occured"}, status.HTTP_500_INTERNAL_SERVER_ERROR
-
 
     return {"message": "Data inserted"}, status.HTTP_200_OK
 
@@ -397,11 +424,12 @@ async def delete_gps_data(dts: datetime, dte: datetime, proto: int):
 
         if len(results) == 0:
             return {"message": "No data found"}, status.HTTP_404_NOT_FOUND
-        
+
         cnt_error = 0
         for day in results:
             # get the index of the first and last point that is in the time range
-            first_index = -1; last_index = -1
+            first_index = -1;
+            last_index = -1
             for i in range(len(day["properties"]["timestamp"])):
                 # we use <= and >= because it's possible that some data points may be missing due to the delete route
                 if day["properties"]["timestamp"][i] >= dts:
@@ -409,15 +437,19 @@ async def delete_gps_data(dts: datetime, dte: datetime, proto: int):
                 if day["properties"]["timestamp"][i] <= dte:
                     last_index = i
                     break
-            
+
             if first_index == -1 or last_index == -1:
                 return {"message": "Invalid dates"}, status.HTTP_400_BAD_REQUEST
 
-
             # remove the values insides the array with the indexes
-            day["geometry"]["coordinates"] = day["geometry"]["coordinates"][:first_index] + day["geometry"]["coordinates"][last_index + 1:]
-            day["properties"]["speed"] = day["properties"]["speed"][:first_index] + day["properties"]["speed"][last_index + 1:]
-            day["properties"]["timestamp"] = day["properties"]["timestamp"][:first_index] + day["properties"]["timestamp"][last_index + 1:]
+            day["geometry"]["coordinates"] = day["geometry"]["coordinates"][:first_index] + day["geometry"][
+                                                                                                "coordinates"][
+                                                                                            last_index + 1:]
+            day["properties"]["speed"] = day["properties"]["speed"][:first_index] + day["properties"]["speed"][
+                                                                                    last_index + 1:]
+            day["properties"]["timestamp"] = day["properties"]["timestamp"][:first_index] + day["properties"][
+                                                                                                "timestamp"][
+                                                                                            last_index + 1:]
 
             try:
                 # update the data in the database
@@ -445,5 +477,11 @@ async def delete_gps_data(dts: datetime, dte: datetime, proto: int):
 
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=5050, reload=True)#, ssl_keyfile="key.pem", ssl_certfile="cert.pem")
-
+    uvicorn.run("app:app", host="0.0.0.0",
+                port=5050,
+                reload=True,
+                ssl_cert_reqs=ssl.CERT_REQUIRED,
+                ssl_certfile="./certs/localhost.pem",
+                ssl_keyfile="./certs/localhost-key.pem",
+                ssl_ca_certs="/home/vrpls/.local/share/mkcert/rootCA.pem",
+                log_level="debug")
