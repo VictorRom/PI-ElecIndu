@@ -477,11 +477,11 @@ async def delete_gps_data(dts: datetime, dte: datetime, proto: int):
 
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0",
+    uvicorn.run("app:app", host="drominger.ddns.net",
                 port=5050,
                 reload=True,
                 ssl_cert_reqs=ssl.CERT_REQUIRED,
-                ssl_certfile="./certs/localhost.pem",
-                ssl_keyfile="./certs/localhost-key.pem",
-                ssl_ca_certs="/home/vrpls/.local/share/mkcert/rootCA.pem",
+                ssl_certfile="./certs/drominger.ddns.net.pem",
+                ssl_keyfile="./certs/drominger.ddns.net-key.pem",
+                ssl_ca_certs="./certs/rootCA.pem",
                 log_level="debug")
