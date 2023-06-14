@@ -1,6 +1,5 @@
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
 from pydantic import BaseModel
 from pydantic.fields import *
 from datetime import datetime, timedelta
@@ -53,6 +52,18 @@ class GPSData(BaseModel):
     properties: dict
 
 app = FastAPI()
+
+origins = [
+    "http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
 
 ##############
 # GET ROUTES #
@@ -398,7 +409,7 @@ async def delete_gps_data(dts: datetime, dte: datetime, proto: int):
 
         if len(results) == 0:
             return {"message": "No data found"}, status.HTTP_404_NOT_FOUND
-        
+
         cnt_error = 0
         for day in results:
             # get the index of the first and last point that is in the time range
@@ -446,13 +457,6 @@ async def delete_gps_data(dts: datetime, dte: datetime, proto: int):
 
 
 if __name__ == "__main__":
-    origins = ['http://localhost:3000']
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    import uvicorn
     uvicorn.run("app:app", host="0.0.0.0", port=5050, reload=True)#, ssl_keyfile="key.pem", ssl_certfile="cert.pem")
 
