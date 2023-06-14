@@ -6,6 +6,7 @@ import DropdownComponent from "../../components/dropdown";
 import LineChart from "../../components/lineChart";
 import { formatByHour } from "../../utils/dateUtils";
 import axios from "axios";
+import { set } from "date-fns";
 
 function formatData(xData, ...yData) {
     return yData.map((yValues) => {
@@ -18,33 +19,69 @@ function formatData(xData, ...yData) {
     });
 }
 
-
-
 const Live = () => {
     const [weatherData, setWeatherData] = useState({});
     const [selectedPrototype, setSelectedPrototype] = useState("");
     // store the weather data of the last 24 hours
     const [weatherData24h, setWeatherData24h] = useState([]);
     // create const variable for the height of the chart
-    const chartHeight = "22vh"; 
+    const chartHeight = "22vh";
 
     const [pinRouteGeojson, setGeojson] = useState(null);
-    const [proto, setProto] = useState("0");
+    const [proto, setProto] = useState("1");
 
     useEffect(() => {
         const fetchData = async () => {
             axios.get(
-                'https://docs.mapbox.com/mapbox-gl-js/assets/route-pin.geojson'
-                //`http://localhost:8080/live/proto=${proto}`
-            ).then((response) => {
-                const data = response.data;
-                setGeojson(data);
+                //'https://docs.mapbox.com/mapbox-gl-js/assets/route-pin.geojson'
+                `http://localhost:5050/live/proto=${proto}`,
+            ).then(response => {
+                const data = response.data[0];
+                console.log("data found :");
+                console.log(data);
+                if(data.points.length === 0) {
+                    console.log("No data found");
+                    setGeojson(null);
+                }
+                else {
+                    let geojson = {
+                        type: "FeatureCollection",
+                        features: [{
+                            type: "Feature",
+                            geometry: {
+                                    type: "LineString",
+                                    coordinates: data.points
+                            },
+                            properties: {
+                                name: "Trail",
+                                elevation: data.distance,
+                                time: data.time,
+                                speed: data.speed
+                            }
+                        }]
+                    };
+                    setGeojson(geojson);
+                }
+            }).catch(error => {
+                if (error.response) {
+                    console.log(error.response.data);
+                    console.log(error.response.status);
+                    console.log(error.response.headers);
+                  } else if (error.request) {
+                    console.log(error.request);
+                  } else {
+                    console.log('Error', error.message);
+                  }
+                  console.log(error.config);
             });
         };
         fetchData();
     }, [proto]);
 
-    useEffect(() => { }, [pinRouteGeojson]);
+    useEffect(() => {
+        console.log("pinRouteGeojson changed")
+        console.log(pinRouteGeojson)
+    }, [pinRouteGeojson]);
 
     const handlePrototypeChange = (newOption) => {
         setSelectedPrototype(newOption);
@@ -83,11 +120,11 @@ const Live = () => {
             const windSpeed = weatherData.hourly.windspeed_10m;
 
             // const combined = formatData(dataX, temperature, windSpeed); //, humidity);
-            
+
             const combinedTemperature = formatData(dataX, temperature);
             const combinedWindSpeed = formatData(dataX, windSpeed);
             const combinedHumidity = formatData(dataX, humidity);
-            
+
             // Create a dictionnary with the data set the name as temperature, humidity, windSpeed
             const data24h = {
                 temperature: combinedTemperature,
@@ -123,7 +160,7 @@ const Live = () => {
                         <Map routePoints={pinRouteGeojson} />
                     )}
                     {!pinRouteGeojson && (
-                        <p>No data for these entries </p>
+                        <p>No data on last period </p>
                     )}
                 </div>
                 <div className="w-1/4 shadow border-2 rounded-md p-4 mx-2 my-2 ">

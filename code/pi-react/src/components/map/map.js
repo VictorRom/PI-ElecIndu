@@ -12,10 +12,12 @@ const Map = ({ routePoints }) => {
     const [pinRouteGeojson, ] = useState(routePoints);
 
     useEffect(() => {
+        console.log("routePoints :");
+        console.log(routePoints.features[0].geometry.coordinates[0]);
         const newMap = new mapboxgl.Map({
             container: mapContainer.current,
             style: 'mapbox://styles/mapbox/satellite-streets-v12',
-            center: [6.58968, 45.39701],
+            center: routePoints.features[0].geometry.coordinates[0],
             zoom: 13,
             pitch: 76, // effet 3d
             pitchWithRotate: true,
@@ -65,7 +67,7 @@ const Map = ({ routePoints }) => {
                         source: 'line',
                         id: 'line',
                         paint: {
-                            'line-color': 'rgba(0,0,0,0)',
+                            'line-color': 'rgba(255,0,0,0)',
                             'line-width': 5
                         },
                         layout: {
