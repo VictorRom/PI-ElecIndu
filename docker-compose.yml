@@ -47,7 +47,7 @@ services:
       - mongo
 
   frontend:
-    build: ./code/frontend
+    build: ./code/pi-react
     ports:
       - 3000:3000
     networks:
