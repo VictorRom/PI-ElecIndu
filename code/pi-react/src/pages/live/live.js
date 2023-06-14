@@ -4,6 +4,7 @@ import { getWeatherData } from "../../services/weatherService";
 import Map from "../../components/map/map";
 import DropdownComponent from "../../components/dropdown";
 import LineChart from "../../components/lineChart";
+import { formatByHour } from "../../utils/dateUtils";
 import axios from "axios";
 
 function formatData(xData, ...yData) {
@@ -24,6 +25,9 @@ const Live = () => {
     const [selectedPrototype, setSelectedPrototype] = useState("");
     // store the weather data of the last 24 hours
     const [weatherData24h, setWeatherData24h] = useState([]);
+    // create const variable for the height of the chart
+    const chartHeight = "22vh"; 
+
     const [pinRouteGeojson, setGeojson] = useState(null);
     const [proto, setProto] = useState("0");
 
@@ -53,22 +57,6 @@ const Live = () => {
         { label: "24h", value: "24h" },
     ];
 
-    const data1 = [
-        [{ x: '2020-01-01 12:00:00', y: 500 },
-        { x: '2020-01-02 12:10:00', y: 500 },
-        { x: '2020-01-03 12:20:00', y: 520 },
-        { x: '2020-01-03 12:30:00', y: 550 },
-        { x: '2020-01-03 12:40:00', y: 550 },
-        { x: '2020-01-03 12:50:00', y: 580 },
-        { x: '2020-01-01 13:00:00', y: 610 },
-        { x: '2020-01-02 13:10:00', y: 670 },
-        { x: '2020-01-03 13:20:00', y: 690 },
-        { x: '2020-01-03 13:30:00', y: 710 },
-        { x: '2020-01-03 13:40:00', y: 700 },
-        { x: '2020-01-03 13:50:00', y: 1600 },]
-    ];
-
-
     useEffect(() => {
         const fetchData = async () => {
             const data = await getWeatherData(45.832622, 6.865175);
@@ -91,13 +79,26 @@ const Live = () => {
             // create array of array like this : [['2020-01-01 12:00:00', '2020-01-02 12:10:00'], [500, 500]]
             const dataX = weatherData.hourly.time;
             const temperature = weatherData.hourly.temperature_2m;
-            // const humidity = weatherData.hourly.relativehumidity_2m;
+            const humidity = weatherData.hourly.relativehumidity_2m;
             const windSpeed = weatherData.hourly.windspeed_10m;
 
-            const combined = formatData(dataX, temperature, windSpeed); //, humidity);
+            // const combined = formatData(dataX, temperature, windSpeed); //, humidity);
+            
+            const combinedTemperature = formatData(dataX, temperature);
+            const combinedWindSpeed = formatData(dataX, windSpeed);
+            const combinedHumidity = formatData(dataX, humidity);
+            
+            // Create a dictionnary with the data set the name as temperature, humidity, windSpeed
+            const data24h = {
+                temperature: combinedTemperature,
+                humidity: combinedHumidity,
+                windspeed: combinedWindSpeed
+            }
+
             // console.log(combined);
-            setWeatherData24h(combined);
-        } else {
+            // setWeatherData24h(combined);
+            setWeatherData24h(data24h);
+        }else{
             console.log("Error while creating weatherData24h, weatherData.hourly is undefined");
         }
     }, [weatherData]);
@@ -133,11 +134,24 @@ const Live = () => {
                                 <p>Temperature: {weatherData.current_weather.temperature}  °C</p>
                                 <p>Wind Speed: {weatherData.current_weather.windspeed}  km/h</p>
                             </div>
-                            {weatherData24h && (
-                                <div className="w-full h-1/2 border-2 shadow rounded-md" style={{ height: "66vh" }}>
-                                    <LineChart data={weatherData24h} lineNames={["Temperature", "Humidity", "Wind Speed"]} />
-                                </div>
-                            )}
+                                {weatherData24h.temperature && (
+                                        <div className="w-full h-1/2 border-2 shadow rounded-md" style={{height: chartHeight}}>
+                                            {/* <LineChart data={weatherData24h} lineNames={["Temperature", "Humidity", "Wind Speed"]} /> */}
+                                            <LineChart data={weatherData24h.temperature} lineNames={["Temperature"]} xAxisTickFormat={formatByHour} />
+                                        </div>
+                                    )}
+
+                                {weatherData24h.windspeed && (
+                                        <div className="w-full h-1/2 border-2 shadow rounded-md" style={{height: chartHeight}}>
+                                            <LineChart data={weatherData24h.windspeed} lineNames={["Wind speed"]} xAxisTickFormat={formatByHour} />
+                                        </div>
+                                    )}
+
+                                {weatherData24h.humidity && (
+                                        <div className="w-full h-1/2 border-2 shadow rounded-md" style={{height: chartHeight}}>
+                                            <LineChart data={weatherData24h.humidity} lineNames={["Humidity"]} xAxisTickFormat={formatByHour} />
+                                        </div>
+                                    )}
                         </div>
                     )}
                     {!weatherData && !weatherData.current_weather(
