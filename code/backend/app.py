@@ -61,7 +61,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET"],
+    allow_methods=["GET","DELETE"],
     allow_headers=["*"],
 )
 
@@ -422,11 +422,10 @@ async def delete_gps_data(dts: datetime, dte: datetime, proto: int):
             first_index = -1; last_index = -1
             for i in range(len(day["properties"]["timestamp"])):
                 # we use <= and >= because it's possible that some data points may be missing due to the delete route
-                if day["properties"]["timestamp"][i] >= dts:
+                if day["properties"]["timestamp"][i] >= dts and first_index == -1:
                     first_index = i
                 if day["properties"]["timestamp"][i] <= dte:
                     last_index = i
-                    break
 
             if first_index == -1 or last_index == -1:
                 return {"message": "Invalid dates"}, status.HTTP_400_BAD_REQUEST
