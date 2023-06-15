@@ -34,7 +34,6 @@ const Live = () => {
     useEffect(() => {
         const fetchData = async () => {
             axios.get(
-                //'https://docs.mapbox.com/mapbox-gl-js/assets/route-pin.geojson'
                 `http://localhost:5050/live/proto=${proto}`,
             ).then(response => {
                 const data = response.data[0];
