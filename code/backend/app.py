@@ -332,7 +332,7 @@ def create_path(start_lon, start_lat, nb_pts):
     path = []
     last_pos = [start_lon, start_lat]
     for _ in range(nb_pts):
-        curr = [last_pos[0] + random() / 200, last_pos[1] + random() / 200]
+        curr = [last_pos[0] + (random()*2-1) / 500, last_pos[1] + (random()*2-1) / 1560]
         path.append(curr)
         last_pos = curr
     return path
