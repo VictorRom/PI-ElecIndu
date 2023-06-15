@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import * as turf from '@turf/turf';
+import { set } from 'date-fns';
 
 
 mapboxgl.accessToken = 'pk.eyJ1IjoidnJwbHMiLCJhIjoiY2wxd29ocWR1MDduZDNicDgzOGhkMWczaCJ9.y40lsszh2YysSIHUeWaOgA';
@@ -9,17 +10,15 @@ mapboxgl.accessToken = 'pk.eyJ1IjoidnJwbHMiLCJhIjoiY2wxd29ocWR1MDduZDNicDgzOGhkM
 const Map = ({ routePoints }) => {
     const mapContainer = useRef(null);
     const [map, setMap] = useState(null);
-    const [pinRouteGeojson, ] = useState(routePoints);
+    const [pinRouteGeojson, setPoints] = useState(routePoints);
 
     useEffect(() => {
-        console.log("routePoints :");
-        console.log(routePoints.features[0].geometry.coordinates[0]);
         const newMap = new mapboxgl.Map({
             container: mapContainer.current,
             style: 'mapbox://styles/mapbox/satellite-streets-v12',
             center: routePoints.features[0].geometry.coordinates[0],
             zoom: 13,
-            pitch: 76, // effet 3d
+            pitch: 45, // effet 3d
             pitchWithRotate: true,
             bearing: 150,
             hash: false
@@ -35,7 +34,13 @@ const Map = ({ routePoints }) => {
         });
         setMap(newMap);
         return () => newMap.remove();
-    }, []);
+    }, [routePoints]);
+
+    useEffect(() => {
+        if (map && routePoints) {
+            setPoints(routePoints);
+        }
+    }, [map, routePoints]);
 
     useEffect(() => {
         if (pinRouteGeojson && map) {
@@ -130,7 +135,6 @@ const Map = ({ routePoints }) => {
         }
     }, [map, pinRouteGeojson])
 
-    // return <div ref={mapContainer} style={{ width: '100vw', height: '100vh' }} />;
     return <div ref={mapContainer} className='h-full w-full'/>;
 };
 
