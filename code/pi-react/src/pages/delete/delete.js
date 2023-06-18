@@ -1,13 +1,12 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
 import Map from '../../components/map/map';
+import DataForm from '../../components/DataForm';
 import axios from 'axios';
 
 const DeletePage = () => {
-    const fetchData = async (proto) => {
-        axios.get(
-            `http://localhost:5050/trail/dts=${"2020-01-01T12:00:00"}&dte=${"2100-12-31T00:00:00"}&proto=${proto}`
-        )
+    const fetchData = async (proto, formData) => {
+        axios.get(`http://localhost:5050/trail/dts=${formData.fromDate}&dte=${formData.toDate}&proto=${proto}`)
             .then((response) => {
                 const data = response.data[0];
                 if (data.timestamps.length === 0) {
@@ -70,10 +69,15 @@ const DeletePage = () => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        fetchData(proto, formData);
+    }
+
+    const handleDelete = (e) => {
+        console.log('Delete');
         axios.delete(
             `http://localhost:5050/gps/delete/dts=${formData.fromDate}&dte=${formData.toDate}&proto=${proto}`
         )
-        fetchData(proto);
+        fetchData(proto, formData);
     }
 
     const handleChange = (e) => {
@@ -86,26 +90,17 @@ const DeletePage = () => {
     }
 
     useEffect(() => {
-        fetchData(proto);
+        if (formData.fromDate !== "" && formData.toDate !== "") {
+            fetchData(proto, formData);
+        }
     }, [proto]);
 
     return (
         <div className="flex" style={{ height: "90vh" }}>
             <div className="w-1/3 h-full p-4 mx-2 my-2">
-                <div className="p-3 h-1/6 flex flex-wrap items-center border-2 shadow rounded-md">
-                    <form onSubmit={handleSubmit} className="flex flex-wrap w-full">
-                        <div className="flex items-center mb-2 justify-between w-full lg:w-1/2">
-                            <label className="mr-4">From</label>
-                            <input type="datetime-local" className="border border-gray-400 px-2 py-1 w-full" name="fromDate" value={formData.fromDate} onChange={handleChange} />
-                        </div>
-                        <div className="flex items-center mb-2 justify-between w-full lg:w-1/2">
-                            <label className="mr-2 ml-2">to</label>
-                            <input type="datetime-local" className="border border-gray-400 px-2 py-1 w-full flex-grow" name="toDate" value={formData.toDate} onChange={handleChange} />
-                        </div>
-                        <div className="flex justify-center w-full">
-                            <button type="submit" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded mt-4">Delete</button>
-                        </div>
-                    </form>
+                <DataForm name="Select data" buttonName="Select" dates={formData} handleChange={handleChange} handleSubmit={handleSubmit} />
+                <div className="flex justify-center w-full">
+                    <button type="submit" className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-4 rounded" onClick={handleDelete}>DELETE SELECTION</button>
                 </div>
             </div>
             <div className="w-2/3 m-2 h-full">
