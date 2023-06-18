@@ -9,8 +9,9 @@ const DeletePage = () => {
         axios.get(`http://localhost:5050/trail/dts=${formData.fromDate}&dte=${formData.toDate}&proto=${proto}`)
             .then((response) => {
                 const data = response.data[0];
-                if (data.timestamps.length === 0) {
+                if (data.message === "No data found" || data.timestamps.length === 0) {
                     console.log("No data found");
+                    setRoute(null);
                 } else {
                     setRoute(getRoute(data));
                 }
