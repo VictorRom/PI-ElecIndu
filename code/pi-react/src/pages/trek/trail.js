@@ -1,6 +1,7 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
 import Map from '../../components/map/map';
+import DataForm from '../../components/DataForm';
 import axios from 'axios';
 import LineChart from '../../components/lineChart';
 
@@ -52,9 +53,39 @@ const TrailGroupInfo = () => {
         toDate: convertDate(tomorrow.toISOString()),
         connectEmpty: false,
     });
+
+    const fetchData = async (proto, formData) => {
+        axios.get(`http://localhost:5050/trail/dts=${formData.fromDate}&dte=${formData.toDate}&proto=${proto}`)
+            .then((response) => {
+                const data = response.data[0];
+                //console.log("data found :");
+                //console.log(data);
+                if (data.points.length === 0) {
+                    //console.log("No data found");
+                    setData(null);
+                } else {
+                    setData(data);
+                    setGlobalStats(data.global_stats);
+                    setStats(getStatistics(data.statistics));
+                    setSegements(getSegments(data.segments));
+                }
+            }).catch(error => {
+                if (error.response) {
+                    console.log(error.response.data);
+                    console.log(error.response.status);
+                    console.log(error.response.headers);
+                } else if (error.request) {
+                    console.log(error.request);
+                } else {
+                    console.log('Error', error.message);
+                }
+                console.log(error.config);
+            });
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
-        // submit the formData to the server
+        fetchData(proto, formData);
     }
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -114,63 +145,16 @@ const TrailGroupInfo = () => {
     }
 
     useEffect(() => {
-        const fetchData = async (route) => {
-            axios.get(route)
-                .then((response) => {
-                    const data = response.data[0];
-                    //console.log("data found :");
-                    //console.log(data);
-                    if (data.points.length === 0) {
-                        //console.log("No data found");
-                        setData(null);
-                    } else {
-                        setData(data);
-                        setGlobalStats(data.global_stats);
-                        setStats(getStatistics(data.statistics));
-                        setSegements(getSegments(data.segments));
-                    }
-                }).catch(error => {
-                    if (error.response) {
-                        console.log(error.response.data);
-                        console.log(error.response.status);
-                        console.log(error.response.headers);
-                    } else if (error.request) {
-                        console.log(error.request);
-                    } else {
-                        console.log('Error', error.message);
-                    }
-                    console.log(error.config);
-                });
-        };
         if (formData.fromDate !== "" && formData.toDate !== "") {
-            fetchData(
-                `http://localhost:5050/trail/dts=${formData.fromDate}&dte=${formData.toDate}&proto=${proto}`
-            );
+            fetchData(proto, formData);
         }
-    }, [formData, proto]);
+    }, [proto]);
 
     return (
         <div className="flex" style={{ height: "90vh" }}>
             <div className="w-1/3 h-full p-2 mx-2">
-                <div className="p-3 h-1/8 flex flex-wrap items-center border-2 shadow rounded-md">
-                    <form onSubmit={handleSubmit} className="flex flex-wrap w-full">
-                        <div className="flex items-center mb-2 justify-between w-full lg:w-1/2">
-                            <label className="mr-4">From</label>
-                            <input type="datetime-local" className="border border-gray-400 px-2 py-1 w-full" name="fromDate" defaultValue={formData.fromDate} onChange={handleChange} />
-                        </div>
-                        <div className="flex items-center mb-2 justify-between w-full lg:w-1/2">
-                            <label className="mr-2 ml-2">to</label>
-                            <input type="datetime-local" className="border border-gray-400 px-2 py-1 w-full flex-grow" name="toDate" defaultValue={formData.toDate} onChange={handleChange} />
-                        </div>
-                        {/* <div className="items-center mb-2 mt-4 lg:mt-0">
-                        <input type="checkbox" className="mr-2" name="connectEmpty" value={formData.connectEmpty} onChange={handleChange} />
-                        <label>Connect empty</label>
-                    </div> */}
-                        <div className="flex justify-center w-full">
-                            <button type="submit" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-4 rounded">Submit</button>
-                        </div>
-                    </form>
-                </div>
+                <DataForm name="Select data" buttonName="Select" dates={formData} handleChange={handleChange} handleSubmit={handleSubmit} />
+
                 <div className="flex h-1/8 items-center mt-2 my-1">
                     <div className="w-full border-2 shadow rounded-md">
                         <div className="flex m-2 border-b-2 justify-center font-medium">
