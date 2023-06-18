@@ -7,6 +7,9 @@ import pymongo as pm
 import math
 from random import random
 import requests
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 def haversine(lat1, lon1, lat2, lon2):
     # Convert latitude and longitude from degrees to radians
@@ -430,34 +433,42 @@ async def delete_gps_data(dts: datetime, dte: datetime, proto: int):
             if first_index == -1 or last_index == -1:
                 return {"message": "Invalid dates"}, status.HTTP_400_BAD_REQUEST
 
-
-            # remove the values insides the array with the indexes
-            day["geometry"]["coordinates"] = day["geometry"]["coordinates"][:first_index] + day["geometry"]["coordinates"][last_index + 1:]
-            day["properties"]["speed"] = day["properties"]["speed"][:first_index] + day["properties"]["speed"][last_index + 1:]
-            day["properties"]["timestamp"] = day["properties"]["timestamp"][:first_index] + day["properties"]["timestamp"][last_index + 1:]
-
+            # delete the whole day
             try:
-                # update the data in the database
-                res = gps_collection.update_one({"_id": day["_id"]}, {"$set": day})
+                if first_index == 0 and last_index == len(day["properties"]["timestamp"]) - 1:
 
-                # test if the update worked
-                if res.modified_count != 1:
-                    cnt_error += 1
+                    res = gps_collection.delete_one({"_id": day["_id"]})
 
-                return {"message": f"Data updated with {cnt_error} errors on {len(results)}"}, status.HTTP_200_OK
+                    # test if the update worked
+                    if res.deleted_count != 1:
+                        cnt_error += 1
+
+                else :
+                    # remove the values insides the array with the indexes
+                    day["geometry"]["coordinates"] = day["geometry"]["coordinates"][:first_index] + day["geometry"]["coordinates"][last_index + 1:]
+                    day["properties"]["speed"] = day["properties"]["speed"][:first_index] + day["properties"]["speed"][last_index + 1:]
+                    day["properties"]["timestamp"] = day["properties"]["timestamp"][:first_index] + day["properties"]["timestamp"][last_index + 1:]
+
+                    res = gps_collection.update_one({"_id": day["_id"]}, {"$set": day})
+
+                    # test if the update worked
+                    if res.modified_count != 1:
+                        cnt_error += 1
 
             except pm.errors.PyMongoError as e:
-                print(e)
+                logging.error(f"error mongo {e}")
                 return {"message": "Database error during update"}, status.HTTP_500_INTERNAL_SERVER_ERROR
             except Exception as e:
-                print(e)
+                logging.error(f"general error {e}")
                 return {"message": "An general error occured during update"}, status.HTTP_500_INTERNAL_SERVER_ERROR
 
+        return {"message": f"Data updated with {cnt_error} errors on {len(results)}"}, status.HTTP_200_OK
+
     except pm.errors.PyMongoError as e:
-        print(e)
+        logging.error(f"error mongo {e}")
         return {"message": "Database error"}, status.HTTP_500_INTERNAL_SERVER_ERROR
     except Exception as e:
-        print(e)
+        logging.error(f"general error {e}")
         return {"message": "An general error occured"}, status.HTTP_500_INTERNAL_SERVER_ERROR
 
 
