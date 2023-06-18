@@ -99,8 +99,10 @@ const DeletePage = () => {
         <div className="flex" style={{ height: "90vh" }}>
             <div className="w-1/3 h-full p-4 mx-2 my-2">
                 <DataForm name="Select data" buttonName="Select" dates={formData} handleChange={handleChange} handleSubmit={handleSubmit} />
-                <div className="flex justify-center w-full">
-                    <button type="submit" className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-4 rounded" onClick={handleDelete}>DELETE SELECTION</button>
+                <div className="p-3 h-1/8 flex flex-wrap items-center border-2 shadow rounded-md">
+                    <div className="flex justify-center w-full">
+                        <button type="submit" className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-4 rounded" onClick={handleDelete}>DELETE SELECTION</button>
+                    </div>
                 </div>
             </div>
             <div className="w-2/3 m-2 h-full">
