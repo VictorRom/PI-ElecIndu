@@ -1,16 +1,17 @@
-from fastapi import FastAPI, status, HTTPException
+from fastapi import FastAPI, status
 import uvicorn
-import ssl
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 import pymongo as pm
 import math
+import numpy as np
 from random import random
 import requests
-from starlette.requests import Request
+from fastapi.middleware.cors import CORSMiddleware
 import logging
 
 logging.basicConfig(level=logging.INFO)
+
 
 def haversine(lat1, lon1, lat2, lon2):
     # Convert latitude and longitude from degrees to radians
@@ -34,12 +35,13 @@ def haversine(lat1, lon1, lat2, lon2):
 def request_elevations(latitudes, longitudes):
     # make request to API for elevation
     # e.g. request : https://api.open-meteo.com/v1/elevation?latitude=52.52,48.85&longitude=13.41,2.35
-    concatenated_latitude = ""; concatenated_longitude = ""
-    for lat,long in zip(latitudes, longitudes):
+    concatenated_latitude = ""
+    concatenated_longitude = ""
+    for lat, long in zip(latitudes, longitudes):
         concatenated_latitude += str(lat) + ","
         concatenated_longitude += str(long) + ","
-    concatenated_latitude = concatenated_latitude[:-1] # remove the last comma
-    concatenated_longitude = concatenated_longitude[:-1] # remove the last comma
+    concatenated_latitude = concatenated_latitude[:-1]  # remove the last comma
+    concatenated_longitude = concatenated_longitude[:-1]  # remove the last comma
     request = f"https://api.open-meteo.com/v1/elevation?latitude={concatenated_latitude}&longitude={concatenated_longitude}"
     response = requests.get(request)
 
@@ -69,9 +71,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET","DELETE"],
+    allow_methods=["GET", "DELETE"],
     allow_headers=["*"],
 )
+
 
 ##############
 # GET ROUTES #
@@ -239,8 +242,9 @@ async def trail_page(dts: datetime, dte: datetime, proto: int):
 
         for day in results:
             # get the index of the first and last point that is in the time range
-            first_index = -1; last_index = -1
-            #return {"message": f"{ day['properties']['timestamp'] } {dte} "}, status.HTTP_404_NOT_FOUND
+            first_index = -1;
+            last_index = -1
+            # return {"message": f"{ day['properties']['timestamp'] } {dte} "}, status.HTTP_404_NOT_FOUND
             for i in range(len(day["properties"]["timestamp"])):
                 # we use <= and >= because it's possible that some data points may be missing due to the delete route
                 if day["properties"]["timestamp"][i] >= dts and first_index == -1:
@@ -334,10 +338,6 @@ async def trail_page(dts: datetime, dte: datetime, proto: int):
 # POST ROUTES #
 ###############
 
-# TODO on va recevoir les données de la dernière heures, donc 6 points.
-#  On va devoir mettre à jour la dernière entrée de la base de données en ajoutant les 6 points à la fin de
-#  la liste de points (aussi speed et timestamp)
-
 @app.post("/gps", response_description="GPS data received")
 async def receive_gps_data(data: GPSData):
     # Extract information from the received data
@@ -373,6 +373,28 @@ async def receive_gps_data(data: GPSData):
             }
             gps_collection.insert_one(new_entry)
 
+        # compute the mean of each information received
+        mean_speed = np.mean(speeds)
+        mean_elevation = np.mean(elevations)
+        mean_timestamp = np.mean(timestamps)
+
+        # get the stats collection according to the prototype
+        stats_res = stats_collection.find_one(
+            {"prototype": data.properties['prototype']})
+
+        # add the mean to the stats collection according to the prototype
+        # if the prototype is not in the collection, create it
+
+        stats_collection.update_one(
+            {"prototype": data.properties['prototype']},
+            {"$set": {
+                "mean_speed": mean_speed + stats_res['mean_speed'],
+                "mean_elevation": mean_elevation + stats_res['mean_elevation'],
+                "mean_timestamp": mean_timestamp + stats_res['mean_timestamp'],
+            }},
+            upsert=True
+        )
+
         return {"message": "Data received"}, status.HTTP_200_OK
 
     except pm.errors.PyMongoError as e:
@@ -385,6 +407,30 @@ async def receive_gps_data(data: GPSData):
 
 # Fonction de test pour les devs
 
+def create_data(start_date, nb_days, pts_per_day, proto):
+    data = []
+    for i in range(nb_days):
+        date = start_date + timedelta(days=i)
+        coordinates = create_path(7.35, 46.22, pts_per_day)
+        timestamps = [date + timedelta(minutes=10 * j) for j in range(pts_per_day)]
+        speeds = [random() * 100 for _ in range(pts_per_day)]
+        elevations = [random() * 1000 for _ in range(pts_per_day)]
+        data.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": coordinates},
+                     "properties": {"speed": speeds, "timestamp": timestamps, "prototype": proto,
+                                    "elevation": elevations}})
+    return data
+
+
+def create_path(start_lon, start_lat, nb_pts):
+    path = []
+    last_pos = [start_lon, start_lat]
+    for _ in range(nb_pts):
+        curr = [last_pos[0] + (random() * 2 - 1) / 500, last_pos[1] + (random() * 2 - 1) / 1560]
+        path.append(curr)
+        last_pos = curr
+    return path
+
+
 @app.get("/insert_data")
 async def insert_data():
     # data for trail page
@@ -392,7 +438,8 @@ async def insert_data():
 
     # data for live page
     date_yesterday = datetime.now() - timedelta(days=1)
-    date_yesterday = date_yesterday.replace(minute=date_yesterday.minute - date_yesterday.minute % 10, second=0, microsecond=0)
+    date_yesterday = date_yesterday.replace(minute=date_yesterday.minute - date_yesterday.minute % 10, second=0,
+                                            microsecond=0)
     data.extend(create_data(date_yesterday, 2, 144, 1))
 
     try:
@@ -454,7 +501,8 @@ async def delete_gps_data(dts: datetime, dte: datetime, proto: int):
         cnt_error = 0
         for day in results:
             # get the index of the first and last point that is in the time range
-            first_index = -1; last_index = -1
+            first_index = -1;
+            last_index = -1
             for i in range(len(day["properties"]["timestamp"])):
                 # we use <= and >= because it's possible that some data points may be missing due to the delete route
                 if day["properties"]["timestamp"][i] >= dts and first_index == -1:
@@ -475,11 +523,16 @@ async def delete_gps_data(dts: datetime, dte: datetime, proto: int):
                     if res.deleted_count != 1:
                         cnt_error += 1
 
-                else :
+                else:
                     # remove the values insides the array with the indexes
-                    day["geometry"]["coordinates"] = day["geometry"]["coordinates"][:first_index] + day["geometry"]["coordinates"][last_index + 1:]
-                    day["properties"]["speed"] = day["properties"]["speed"][:first_index] + day["properties"]["speed"][last_index + 1:]
-                    day["properties"]["timestamp"] = day["properties"]["timestamp"][:first_index] + day["properties"]["timestamp"][last_index + 1:]
+                    day["geometry"]["coordinates"] = day["geometry"]["coordinates"][:first_index] + day["geometry"][
+                                                                                                        "coordinates"][
+                                                                                                    last_index + 1:]
+                    day["properties"]["speed"] = day["properties"]["speed"][:first_index] + day["properties"]["speed"][
+                                                                                            last_index + 1:]
+                    day["properties"]["timestamp"] = day["properties"]["timestamp"][:first_index] + day["properties"][
+                                                                                                        "timestamp"][
+                                                                                                    last_index + 1:]
 
                     res = gps_collection.update_one({"_id": day["_id"]}, {"$set": day})
 

@@ -4,3 +4,4 @@ pymongo==4.3.3
 Requests==2.30.0
 uvicorn==0.22.0
 starlette~=0.26.1
+numpy~=1.25.0
