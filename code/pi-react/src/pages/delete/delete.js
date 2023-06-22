@@ -4,7 +4,7 @@ import Map from '../../components/map/map';
 import DataForm from '../../components/DataForm';
 import axios from 'axios';
 
-const DeletePage = () => {
+const DeletePage = ({proto}) => {
     const fetchData = async (proto, formData) => {
         axios.get(`http://localhost:5050/trail/dts=${formData.fromDate}&dte=${formData.toDate}&proto=${proto}`)
             .then((response) => {
@@ -29,7 +29,6 @@ const DeletePage = () => {
             });
     };
 
-    const [proto, setProto] = useState("1");
     const [route, setRoute] = useState(null);
 
     const getRoute = (data) => {

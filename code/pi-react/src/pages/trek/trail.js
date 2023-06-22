@@ -5,7 +5,7 @@ import DataForm from '../../components/DataForm';
 import axios from 'axios';
 import LineChart from '../../components/lineChart';
 
-const TrailGroupInfo = () => {
+const TrailGroupInfo = ({proto}) => {
 
     const convertDate = (date) => {
         const dateObj = new Date(date);
@@ -29,7 +29,6 @@ const TrailGroupInfo = () => {
         elevation: 0
     });
     const [data, setData] = useState(null);
-    const [proto, setProto] = useState("1");
     const [stats, setStats] = useState({
         avg_speed: 3,
         distance: 10,

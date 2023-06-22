@@ -1,19 +1,12 @@
-import React, { useState} from 'react';
 import { Link } from 'react-router-dom';
 import DropdownComponent from './dropdown';
 
 
-function Navbar() {
-  const [selectedPrototype, setSelectedPrototype] = useState("");
-
-  const handlePrototypeChange = (newOption) => {
-    setSelectedPrototype(newOption);
-    // Faire des actions spécifiques pour le dropdown 1 ici
-  };
+function Navbar({handlePrototypeChange}) {
 
   const optionsPrototype = [
-    { label: "Prototype Long", value: "protoLong" },
-    { label: "Prototype Mini", value: "protoMini" },
+    { label: "Prototype Long", value: "1" },
+    { label: "Prototype Mini", value: "2" },
   ];
 
   return (
@@ -49,12 +42,6 @@ function Navbar() {
         <DropdownComponent options={optionsPrototype} onChange={handlePrototypeChange} />
       </div>
     </header>
-
-  
-
-
-
-
   );
 }
 
