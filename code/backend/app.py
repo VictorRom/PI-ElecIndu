@@ -327,14 +327,48 @@ async def trail_page(dts: datetime, dte: datetime, proto: int):
 #  la liste de points (aussi speed et timestamp)
 
 @app.post("/gps", response_description="GPS data received")
-async def receive_gps_data(data):
-    # decode the data using the tls key
+async def receive_gps_data(data: GPSData):
+    # Extract information from the received data
+    coordinates = data.geometry['coordinates']
+    timestamps = data.properties['timestamp']
+    speeds = data.properties['speed']
 
-    # process information from data : request_elevation()
+    # Calculate the elevations for the received coordinates
+    elevations = request_elevations(coordinates[:, 1], coordinates[:, 0])
 
-    # update global stats in the database
+    # Update the last entry in the database with the received data
+    try:
+        last_entry = gps_collection.find_one(sort=[("properties.timestamp", pm.DESCENDING)])
+        if last_entry:
+            # Append the new data to the existing lists
+            last_entry['geometry']['coordinates'].extend(coordinates)
+            last_entry['properties']['timestamp'].extend(timestamps)
+            last_entry['properties']['speed'].extend(speeds)
+            last_entry['properties']['elevation'].extend(elevations)
+            # Update the entry in the database
+            gps_collection.update_one({'_id': last_entry['_id']}, {"$set": last_entry})
+        else:
+            # Create a new entry in the database with the received data
+            new_entry = {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": coordinates.tolist()},
+                "properties": {
+                    "speed": speeds,
+                    "timestamp": timestamps,
+                    "prototype": 1,
+                    "elevation": elevations
+                }
+            }
+            gps_collection.insert_one(new_entry)
 
-    return {"message": "Data received"}, status.HTTP_200_OK
+        return {"message": "Data received"}, status.HTTP_200_OK
+
+    except pm.errors.PyMongoError as e:
+        print(e)
+        return {"message": "Database error"}, status.HTTP_500_INTERNAL_SERVER_ERROR
+    except Exception as e:
+        print(e)
+        return {"message": "A general error occurred"}, status.HTTP_500_INTERNAL_SERVER_ERROR
 
 
 # Fonction de test pour les devs
