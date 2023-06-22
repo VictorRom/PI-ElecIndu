@@ -1,53 +1,92 @@
 import React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Map from '../../components/map/map';
+import DataForm from '../../components/DataForm';
+import axios from 'axios';
 import LineChart from '../../components/lineChart';
 
 const TrailGroupInfo = () => {
-    // Implement useEffect -> voir dans [] en bas de useEffect qui va reload le tout dès que ça change
-    const page_props = {
-        infos: {
-            distance: 0,
-            time: 0,
-            speed: 0,
-        },
-        improvements: {
-            distance: 0,
-            time: 0,
-            speed: 0,
-        },
-    }
 
-    const data1 = [
-        [{ x: '2020-01-01 12:00:00', y: 500 },
-        { x: '2020-01-02 12:10:00', y: 500 },
-        { x: '2020-01-03 12:20:00', y: 520 },
-        { x: '2020-01-03 12:30:00', y: 550 },
-        { x: '2020-01-03 12:40:00', y: 550 },
-        { x: '2020-01-03 12:50:00', y: 580 },
-        { x: '2020-01-01 13:00:00', y: 610 },
-        { x: '2020-01-02 13:10:00', y: 670 },
-        { x: '2020-01-03 13:20:00', y: 690 },
-        { x: '2020-01-03 13:30:00', y: 710 },
-        { x: '2020-01-03 13:40:00', y: 700 },
-        { x: '2020-01-03 13:50:00', y: 1600 },]
-    ];
+    const convertDate = (date) => {
+        const dateObj = new Date(date);
+
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const hours = String(dateObj.getHours()).padStart(2, '0');
+        const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
 
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    const [global_stats, setGlobalStats] = useState({
+        distance: 0,
+        speed: 0,
+        elevation: 0
+    });
+    const [data, setData] = useState(null);
+    const [proto, setProto] = useState("1");
+    const [stats, setStats] = useState({
+        avg_speed: 3,
+        distance: 10,
+        total_time: 3.3
+    });
+    const [segements, setSegements] = useState({
+        best: {
+            distance: 0,
+            elevation: 0,
+            speed: 0,
+        },
+        worst: {
+            distance: 0,
+            elevation: 0,
+            speed: 0,
+        },
+    });
+
     const [formData, setFormData] = useState({
-        fromDate: today.toISOString(),
-        toDate: tomorrow.toISOString(),
+        fromDate: convertDate(today.toISOString()),
+        toDate: convertDate(tomorrow.toISOString()),
         connectEmpty: false,
     });
 
+    const fetchData = async (proto, formData) => {
+        axios.get(`http://localhost:5050/trail/dts=${formData.fromDate}&dte=${formData.toDate}&proto=${proto}`)
+            .then((response) => {
+                const data = response.data[0];
+                //console.log("data found :");
+                //console.log(data);
+                if (data.points.length === 0) {
+                    //console.log("No data found");
+                    setData(null);
+                } else {
+                    setData(data);
+                    setGlobalStats(data.global_stats);
+                    setStats(getStatistics(data.statistics));
+                    setSegements(getSegments(data.segments));
+                }
+            }).catch(error => {
+                if (error.response) {
+                    console.log(error.response.data);
+                    console.log(error.response.status);
+                    console.log(error.response.headers);
+                } else if (error.request) {
+                    console.log(error.request);
+                } else {
+                    console.log('Error', error.message);
+                }
+                console.log(error.config);
+            });
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
-        // submit the formData to the server
+        fetchData(proto, formData);
     }
-
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         const val = type === 'checkbox' ? checked : value;
@@ -57,100 +96,142 @@ const TrailGroupInfo = () => {
         });
     }
 
-    return (
-    <div className="flex" style={{height: "90vh"}}>
-        <div className="w-1/3 h-full p-2 mx-2">
-            <div className="p-3 h-1/8 flex flex-wrap items-center border-2 shadow rounded-md">
-                <form onSubmit={handleSubmit} className="flex flex-wrap w-full">
-                    <div className="flex items-center mb-2 justify-between w-full lg:w-1/2">
-                        <label className="mr-4">From</label>
-                        <input type="datetime-local" className="border border-gray-400 px-2 py-1 w-full" name="fromDate" value={formData.fromDate} onChange={handleChange} />
-                    </div>
-                    <div className="flex items-center mb-2 justify-between w-full lg:w-1/2">
-                        <label className="mr-2 ml-2">to</label>
-                        <input type="datetime-local" className="border border-gray-400 px-2 py-1 w-full flex-grow" name="toDate" value={formData.toDate} onChange={handleChange} />
-                    </div>
-                    {/* <div className="items-center mb-2 mt-4 lg:mt-0">
-                        <input type="checkbox" className="mr-2" name="connectEmpty" value={formData.connectEmpty} onChange={handleChange} />
-                        <label>Connect empty</label>
-                    </div> */}
-                    <div className="flex justify-center w-full">
-                        <button type="submit" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-4 rounded">Submit</button>
-                    </div>
-                </form>
-            </div>
-            <div className="flex h-1/8 items-center mt-2 my-1">
-                <div className="w-full border-2 shadow rounded-md">
-                    <div className="flex m-2 border-b-2 justify-center font-medium">
-                        <p className="w-2/3">Trail informations</p>
-                        <p className="w-1/3">Best segment</p>
-                        <p className="w-1/3">Worst segment</p>
-                    </div>
-                    <div className="flex m-1">
-                        <div className="w-1/4 flex flex-col">
-                            <label className="text-left m-1">Distance:</label>
-                            <label className="text-left m-1">Average speed:</label>
-                            <label className="text-left m-1">Total time:</label>
-                        </div>
-                        <div className="w-1/5 flex flex-col border-r-2 border-gray-400">
-                            <span className='my-1'>{page_props.infos.distance} km</span>
-                            <span className='my-1'>{page_props.infos.speed} km/h</span>
-                            <span className='my-1'>{page_props.infos.time} hours</span>
-                        </div>
-                        <div className="w-1/4 flex flex-col items-center">
-                            <div className="flex items-center mb-2">
-                                <span>{page_props.improvements.distance}%</span>
-                            </div>
-                            <div className="flex items-center mb-2">
-                                <span>{page_props.improvements.speed}%</span>
-                            </div>
-                            <div className="flex items-center mb-2">
-                                <span>{page_props.improvements.time}%</span>
-                            </div>
-                        </div>
-                        <div className="w-1/4 flex flex-col items-center">
-                            <div className="flex items-center mb-2">
-                                <span>{page_props.improvements.distance}%</span>
-                            </div>
-                            <div className="flex items-center mb-2">
-                                <span>{page_props.improvements.speed}%</span>
-                            </div>
-                            <div className="flex items-center mb-2">
-                                <span>{page_props.improvements.time}%</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div className="w-full border-2 shadow rounded-md my-1">
-                <div className="flex m-1 border-b-2">
-                    <p className="font-medium">General statistics</p>
-                </div>
-                <div className="flex flex-wrap m-2 justify-center">
-                    <div className="w-1/3 flex">
-                        <p className="w-1/2">Distance</p>
-                        <p className="w-1/2">0.0</p>
-                    </div>
-                    <div className="w-1/3 flex">
-                        <p className="w-1/2">Speed</p>
-                        <p className="w-1/2">0.0</p>
-                    </div>
-                    <div className="w-1/3 flex">
-                        <p className="w-1/2">Elevation</p>
-                        <p className="w-1/2">0.0</p>
+    const getRoute = (data) => {
+        let geojson = {
+            type: "FeatureCollection",
+            features: [{
+                type: "Feature",
+                geometry: {
+                    type: "LineString",
+                    coordinates: data.points
+                },
+            }]
+        };
+        return geojson;
+    }
 
+    const getElevations = () => {
+        if (data === null) {
+            return [[{ x: 0, y: 0 }]];
+        }
+        let elevations = [];
+        for (let i = 0; i < data.elevations.length; i++) {
+            elevations.push({ x: data.timestamps[i], y: data.elevations[i] });
+        }
+        return [elevations];
+    }
+
+    const getStatistics = (data) => {
+        return {
+            avg_speed: data.avg_speed.toFixed(2),
+            distance: data.distance.toFixed(2),
+            total_time: (data.total_time / 3600).toFixed(2)
+        }
+    }
+
+    const getSegments = (data) => {
+        return {
+            best: {
+                distance: data.best.distance.toFixed(0),
+                elevation: data.best.elevation.toFixed(0),
+                speed: data.best.speed.toFixed(0),
+            },
+            worst: {
+                distance: data.worst.distance.toFixed(0),
+                elevation: data.worst.elevation.toFixed(0),
+                speed: data.worst.speed.toFixed(0),
+            },
+        }
+    }
+
+    useEffect(() => {
+        if (formData.fromDate !== "" && formData.toDate !== "") {
+            fetchData(proto, formData);
+        }
+    }, [proto]);
+
+    return (
+        <div className="flex" style={{ height: "90vh" }}>
+            <div className="w-1/3 h-full p-2 mx-2">
+                <DataForm name="Select data" buttonName="Select" dates={formData} handleChange={handleChange} handleSubmit={handleSubmit} />
+
+                <div className="flex h-1/8 items-center mt-2 my-1">
+                    <div className="w-full border-2 shadow rounded-md">
+                        <div className="flex m-2 border-b-2 justify-center font-medium">
+                            <p className="w-2/3">Trail informations</p>
+                            <p className="w-1/3">Best segment</p>
+                            <p className="w-1/3">Worst segment</p>
+                        </div>
+                        <div className="flex m-1">
+                            <div className="w-1/4 flex flex-col">
+                                <label className="text-left m-1">Distance:</label>
+                                <label className="text-left m-1">Average speed:</label>
+                                <label className="text-left m-1">Total time:</label>
+                            </div>
+                            <div className="w-1/5 flex flex-col border-r-2 border-gray-400">
+                                <span className='my-1'>{stats.distance} km</span>
+                                <span className='my-1'>{stats.avg_speed} km/h</span>
+                                <span className='my-1'>{stats.total_time} hours</span>
+                            </div>
+                            <div className="w-1/4 flex flex-col items-center">
+                                <div className="flex items-center mb-2">
+                                    <span>{segements.best.distance}%</span>
+                                </div>
+                                <div className="flex items-center mb-2">
+                                    <span>{segements.best.speed}%</span>
+                                </div>
+                                <div className="flex items-center mb-2">
+                                    <span>{segements.best.elevation}%</span>
+                                </div>
+                            </div>
+                            <div className="w-1/4 flex flex-col items-center">
+                                <div className="flex items-center mb-2">
+                                    <span>{segements.worst.distance}%</span>
+                                </div>
+                                <div className="flex items-center mb-2">
+                                    <span>{segements.worst.speed}%</span>
+                                </div>
+                                <div className="flex items-center mb-2">
+                                    <span>{segements.worst.elevation}%</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+                <div className="w-full border-2 shadow rounded-md my-1">
+                    <div className="flex m-1 border-b-2">
+                        <p className="font-medium">General statistics</p>
+                    </div>
+                    <div className="flex flex-wrap m-2 justify-center">
+                        <div className="w-1/3 flex">
+                            <p className="w-1/2">Distance</p>
+                            <p className="w-1/2">{global_stats.distance}</p>
+                        </div>
+                        <div className="w-1/3 flex">
+                            <p className="w-1/2">Speed</p>
+                            <p className="w-1/2">{global_stats.speed}</p>
+                        </div>
+                        <div className="w-1/3 flex">
+                            <p className="w-1/2">Elevation</p>
+                            <p className="w-1/2">{global_stats.elevation}</p>
+
+                        </div>
+                    </div>
+                </div>
+                <div className="w-full h-4/6 border-2 shadow rounded-md p-4">
+                    <LineChart data={getElevations()} lineNames={["Elevation"]} />
+                </div>
             </div>
-            <div className="w-full h-4/6 border-2 shadow rounded-md p-4">
-                <LineChart data={data1} lineNames={["Elevation"]}/>
+            <div className="w-2/3 m-2 h-full">
+                {data && (
+                    <Map routePoints={getRoute(data)} />
+                )}
+                {!data && (
+                    <p> Waiting for dates selection </p>
+                )}
             </div>
+
         </div>
-        <div className="w-2/3 m-2 h-full">
-            <Map />
-        </div>
-    
-    </div>
     );
 }
 

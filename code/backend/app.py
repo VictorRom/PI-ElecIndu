@@ -8,7 +8,9 @@ import math
 from random import random
 import requests
 from starlette.requests import Request
+import logging
 
+logging.basicConfig(level=logging.INFO)
 
 def haversine(lat1, lon1, lat2, lon2):
     # Convert latitude and longitude from degrees to radians
@@ -32,13 +34,12 @@ def haversine(lat1, lon1, lat2, lon2):
 def request_elevations(latitudes, longitudes):
     # make request to API for elevation
     # e.g. request : https://api.open-meteo.com/v1/elevation?latitude=52.52,48.85&longitude=13.41,2.35
-    concatenated_latitude = "";
-    concatenated_longitude = ""
-    for lat, long in zip(latitudes, longitudes):
+    concatenated_latitude = ""; concatenated_longitude = ""
+    for lat,long in zip(latitudes, longitudes):
         concatenated_latitude += str(lat) + ","
         concatenated_longitude += str(long) + ","
-    concatenated_latitude = concatenated_latitude[:-1]  # remove the last comma
-    concatenated_longitude = concatenated_longitude[:-1]  # remove the last comma
+    concatenated_latitude = concatenated_latitude[:-1] # remove the last comma
+    concatenated_longitude = concatenated_longitude[:-1] # remove the last comma
     request = f"https://api.open-meteo.com/v1/elevation?latitude={concatenated_latitude}&longitude={concatenated_longitude}"
     response = requests.get(request)
 
@@ -60,6 +61,17 @@ class GPSData(BaseModel):
 
 app = FastAPI()
 
+origins = [
+    "http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["GET","DELETE"],
+    allow_headers=["*"],
+)
 
 ##############
 # GET ROUTES #
@@ -227,11 +239,11 @@ async def trail_page(dts: datetime, dte: datetime, proto: int):
 
         for day in results:
             # get the index of the first and last point that is in the time range
-            first_index = -1;
-            last_index = -1
+            first_index = -1; last_index = -1
+            #return {"message": f"{ day['properties']['timestamp'] } {dte} "}, status.HTTP_404_NOT_FOUND
             for i in range(len(day["properties"]["timestamp"])):
                 # we use <= and >= because it's possible that some data points may be missing due to the delete route
-                if day["properties"]["timestamp"][i] >= dts:
+                if day["properties"]["timestamp"][i] >= dts and first_index == -1:
                     first_index = i
                 if day["properties"]["timestamp"][i] <= dte:
                     last_index = i
@@ -375,34 +387,13 @@ async def receive_gps_data(data: GPSData):
 
 @app.get("/insert_data")
 async def insert_data():
-    data = []
-    for i in range(10):
-        date = datetime(2023, 4, 15 + i, 0, 0, 0)
-        coordinates = [[6.0 + random() / 2, 45 + random() / 2] for i in range(144)]
-        timestamps = [date + timedelta(minutes=10 * i) for i in range(144)]
-        speeds = [random() * 100 for i in range(144)]
-        elevations = [random() * 1000 for i in range(144)]
-        data.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": coordinates},
-                     "properties": {"speed": speeds, "timestamp": timestamps, "prototype": 1, "elevation": elevations}})
+    # data for trail page
+    data = create_data(datetime(2023, 4, 15, 0, 0, 0), 10, 144, 1)
 
-    date_today = datetime.now()
-    date_today = date_today.replace(minute=date_today.minute - date_today.minute % 10, second=0, microsecond=0)
-    coordinates = [[6.0 + random() / 2, 45 + random() / 2] for i in range(144)]
-    timestamps = [date_today + timedelta(minutes=10 * i) for i in range(144)]
-    speeds = [random() * 100 for i in range(144)]
-    elevations = [random() * 1000 for i in range(144)]
-    data.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": coordinates},
-                 "properties": {"speed": speeds, "timestamp": timestamps, "prototype": 1, "elevation": elevations}})
-
+    # data for live page
     date_yesterday = datetime.now() - timedelta(days=1)
-    date_yesterday = date_yesterday.replace(minute=date_yesterday.minute - date_yesterday.minute % 10, second=0,
-                                            microsecond=0)
-    coordinates = [[6.0 + random() / 2, 45 + random() / 2] for i in range(144)]
-    timestamps = [date_yesterday + timedelta(minutes=10 * i) for i in range(144)]
-    speeds = [random() * 100 for i in range(144)]
-    elevations = [random() * 1000 for i in range(144)]
-    data.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": coordinates},
-                 "properties": {"speed": speeds, "timestamp": timestamps, "prototype": 1, "elevation": elevations}})
+    date_yesterday = date_yesterday.replace(minute=date_yesterday.minute - date_yesterday.minute % 10, second=0, microsecond=0)
+    data.extend(create_data(date_yesterday, 2, 144, 1))
 
     try:
         gps_collection.insert_many(data)
@@ -433,6 +424,7 @@ async def insert_data():
 #################
 @app.delete("/gps/delete/dts={dts}&dte={dte}&proto={proto}", response_description="GPS data deleted")
 async def delete_gps_data(dts: datetime, dte: datetime, proto: int):
+    print(dts, dte, proto)
     dts = dts.replace(minute=dts.minute - dts.minute % 10, second=0, microsecond=0)
     dte = dte.replace(minute=dte.minute - dte.minute % 10, second=0, microsecond=0)
 
@@ -462,51 +454,53 @@ async def delete_gps_data(dts: datetime, dte: datetime, proto: int):
         cnt_error = 0
         for day in results:
             # get the index of the first and last point that is in the time range
-            first_index = -1;
-            last_index = -1
+            first_index = -1; last_index = -1
             for i in range(len(day["properties"]["timestamp"])):
                 # we use <= and >= because it's possible that some data points may be missing due to the delete route
-                if day["properties"]["timestamp"][i] >= dts:
+                if day["properties"]["timestamp"][i] >= dts and first_index == -1:
                     first_index = i
                 if day["properties"]["timestamp"][i] <= dte:
                     last_index = i
-                    break
 
             if first_index == -1 or last_index == -1:
                 return {"message": "Invalid dates"}, status.HTTP_400_BAD_REQUEST
 
-            # remove the values insides the array with the indexes
-            day["geometry"]["coordinates"] = day["geometry"]["coordinates"][:first_index] + day["geometry"][
-                                                                                                "coordinates"][
-                                                                                            last_index + 1:]
-            day["properties"]["speed"] = day["properties"]["speed"][:first_index] + day["properties"]["speed"][
-                                                                                    last_index + 1:]
-            day["properties"]["timestamp"] = day["properties"]["timestamp"][:first_index] + day["properties"][
-                                                                                                "timestamp"][
-                                                                                            last_index + 1:]
-
+            # delete the whole day
             try:
-                # update the data in the database
-                res = gps_collection.update_one({"_id": day["_id"]}, {"$set": day})
+                if first_index == 0 and last_index == len(day["properties"]["timestamp"]) - 1:
 
-                # test if the update worked
-                if res.modified_count != 1:
-                    cnt_error += 1
+                    res = gps_collection.delete_one({"_id": day["_id"]})
 
-                return {"message": f"Data updated with {cnt_error} errors on {len(results)}"}, status.HTTP_200_OK
+                    # test if the update worked
+                    if res.deleted_count != 1:
+                        cnt_error += 1
+
+                else :
+                    # remove the values insides the array with the indexes
+                    day["geometry"]["coordinates"] = day["geometry"]["coordinates"][:first_index] + day["geometry"]["coordinates"][last_index + 1:]
+                    day["properties"]["speed"] = day["properties"]["speed"][:first_index] + day["properties"]["speed"][last_index + 1:]
+                    day["properties"]["timestamp"] = day["properties"]["timestamp"][:first_index] + day["properties"]["timestamp"][last_index + 1:]
+
+                    res = gps_collection.update_one({"_id": day["_id"]}, {"$set": day})
+
+                    # test if the update worked
+                    if res.modified_count != 1:
+                        cnt_error += 1
 
             except pm.errors.PyMongoError as e:
-                print(e)
+                logging.error(f"error mongo {e}")
                 return {"message": "Database error during update"}, status.HTTP_500_INTERNAL_SERVER_ERROR
             except Exception as e:
-                print(e)
+                logging.error(f"general error {e}")
                 return {"message": "An general error occured during update"}, status.HTTP_500_INTERNAL_SERVER_ERROR
 
+        return {"message": f"Data updated with {cnt_error} errors on {len(results)}"}, status.HTTP_200_OK
+
     except pm.errors.PyMongoError as e:
-        print(e)
+        logging.error(f"error mongo {e}")
         return {"message": "Database error"}, status.HTTP_500_INTERNAL_SERVER_ERROR
     except Exception as e:
-        print(e)
+        logging.error(f"general error {e}")
         return {"message": "An general error occured"}, status.HTTP_500_INTERNAL_SERVER_ERROR
 
 
