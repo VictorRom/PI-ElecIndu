@@ -19,7 +19,7 @@ function formatData(xData, ...yData) {
     });
 }
 
-const Live = () => {
+const Live = ({ proto }) => {
     const [weatherData, setWeatherData] = useState({});
     const [period, setSelectedPeriod] = useState("");
     // store the weather data of the last 24 hours
@@ -29,7 +29,6 @@ const Live = () => {
 
     const [geojsonData, setGeojson] = useState(null);
     const [pinRouteGeojson, setRoute] = useState(null);
-    const [proto, setProto] = useState("1");
 
     useEffect(() => {
         const fetchData = async () => {
